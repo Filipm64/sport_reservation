@@ -60,3 +60,9 @@ Předpokládáme, že každé sportoviště má jednu pevně definovanou dostupn
 
 ## Unknown
 Není zatím jasné, zda musí být každá rezervace schválena správcem, nebo zda se má po vytvoření automaticky potvrdit.
+
+
+#Future Presure
+Chagebility: 
+Podora různých typů rezervací a jejich pravidel (např. hodinový pronájem tenisového kurtu vs. vstup do posilovny s kapacitním limitem osob)
+Podpora změny cen podle sezóny.
