@@ -17,6 +17,25 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
+from reservations import views
+
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/reservations/', views.create_reservation, name='create-reservation'),
+    path('api/availability/', views.check_availability, name='check-availability'),
+    path(
+        'api/reservations/<int:reservation_id>/confirm/',
+        views.confirm_reservation,
+        name='confirm-reservation',
+    ),
+    path(
+        'api/reservations/<int:reservation_id>/approve/',
+        views.approve_reservation,
+        name='approve-reservation',
+    ),
+    path(
+        'api/reservations/<int:reservation_id>/cancel/',
+        views.cancel_reservation,
+        name='cancel-reservation',
+    ),
 ]

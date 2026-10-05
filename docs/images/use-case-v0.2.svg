@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="520" viewBox="0 0 920 520" role="img" aria-labelledby="title desc">
+  <title id="title">Use-case diagram for reservation system v0.2</title>
+  <desc id="desc">A customer uses create, availability, confirm and cancel. A sports facility manager approves reservations.</desc>
+  <style>
+    text { font: 17px Arial, sans-serif; fill: #172033; }
+    .title { font-size: 22px; font-weight: bold; }
+    .actor { stroke: #172033; stroke-width: 3; fill: none; }
+    .system { fill: #f7f9fc; stroke: #53657d; stroke-width: 2; }
+    .usecase { fill: #fff; stroke: #315d8a; stroke-width: 2; }
+    .link { stroke: #64748b; stroke-width: 1.7; }
+  </style>
+  <rect class="system" x="270" y="55" width="620" height="425" rx="8"/>
+  <text class="title" x="580" y="88" text-anchor="middle">Systém rezervací sportovišť</text>
+
+  <circle class="actor" cx="105" cy="180" r="19"/>
+  <path class="actor" d="M105 199v72m-34-42h68m-34 42-30 46m30-46 30 46"/>
+  <text x="105" y="345" text-anchor="middle">Zákazník</text>
+
+  <circle class="actor" cx="105" cy="385" r="19"/>
+  <path class="actor" d="M105 404v47m-34-22h68m-34 22-30 46m30-46 30 46"/>
+  <text x="105" y="510" text-anchor="middle">Správce sportoviště</text>
+
+  <ellipse class="usecase" cx="575" cy="155" rx="190" ry="36"/>
+  <text x="575" y="161" text-anchor="middle">Create Reservation</text>
+  <ellipse class="usecase" cx="575" cy="230" rx="190" ry="36"/>
+  <text x="575" y="236" text-anchor="middle">Check Availability</text>
+  <ellipse class="usecase" cx="575" cy="305" rx="190" ry="36"/>
+  <text x="575" y="311" text-anchor="middle">Confirm Reservation</text>
+  <ellipse class="usecase" cx="575" cy="380" rx="190" ry="36"/>
+  <text x="575" y="386" text-anchor="middle">Cancel Reservation</text>
+  <ellipse class="usecase" cx="575" cy="445" rx="190" ry="28"/>
+  <text x="575" y="451" text-anchor="middle">Approve Reservation</text>
+
+  <path class="link" d="M139 220 385 155M139 225 385 230M139 232 385 305M139 239 385 380"/>
+  <path class="link" d="M139 427 385 445"/>
+</svg>

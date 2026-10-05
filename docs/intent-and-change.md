@@ -1,62 +1,53 @@
-# Project Frame
+# Project Frame — rezervační systém sportovišť
 
-## Reservation domain
-Rezervace sportovišť
+## Účel
+Zákazník si může požádat o rezervaci sportoviště na konkrétní datum a čas.
+U některých sportovišť žádost před potvrzením posoudí správce.
 
-## Purpose
-Systém slouží zákazníkům ke snadné rezervaci sportovišť na konkrétní datum a čas. Provozovatelům umožňuje spravovat dostupnost sportovišť a potvrzovat nebo rušit rezervace.
+## Aktéři
+- **Zákazník:** vytvoří žádost, zkontroluje dostupnost, požádá o potvrzení
+  a může rezervaci před začátkem zrušit.
+- **Správce sportoviště:** spravuje Resource a schvaluje nebo zamítá
+  čekající žádosti. V ukázce je oprávnění reprezentováno příznakem
+  přihlášeného Django uživatele `is_staff`.
 
-## Users / Stakeholders
-Zákazník – vytváří a ruší rezervace.
-Správce sportoviště – schvaluje rezervace a spravuje sportoviště.
-Provozovatel – sleduje využití a dostupnost sportovišť.
+## Pojmy a uložená data
+- **Sport:** typ sportovní aktivity.
+- **Resource:** rezervovatelné sportoviště; obsahuje název, sport,
+  lokalitu, otevírací dobu, příznak dostupnosti a informaci, zda vyžaduje
+  schválení.
+- **Reservation:** uživatel, Resource, začátek, konec, stav, čas vytvoření
+  a případný čas žádosti o schválení.
 
-## Core concepts
-Reservation – rezervace sportoviště na určitý čas.
-Resource – sportoviště, které lze rezervovat.
-User – osoba, která rezervaci vytváří.
-Sport – typ sportovní aktivity, pro kterou je sportoviště určeno.
+## Operace
+- Create Reservation
+- Check Availability
+- Confirm Reservation
+- Approve Reservation
+- Cancel Reservation
 
-## Core operations
-- Create reservation
-- Confirm / approve reservation
-- Cancel reservation
-- Check availability
+## Stavy
+`DRAFT → CONFIRMED` pro Resource bez schvalování.
 
-## Persistent state
+`DRAFT → PENDING_APPROVAL → CONFIRMED | REJECTED | EXPIRED` pro Resource
+vyžadující schválení.
 
-Reservation:
-ID rezervace
-User
-Resource
-Datum a čas začátku
-Datum a čas konce
-Stav rezervace
-Datum vytvoření
+`DRAFT`, `PENDING_APPROVAL` nebo `CONFIRMED` lze před začátkem změnit na
+`CANCELLED`. Zrušené, zamítnuté ani vypršené záznamy se nemažou.
 
-Resource:
-ID sportoviště
-Název
-Typ sportoviště
-Lokalita
-Otevírací doba
-Aktuální stav dostupnosti
+## Společná pravidla
+- Interval je `[start, end)` a musí mít kladnou délku.
+- Resource blokuje pouze stav `CONFIRMED`; překrývající se potvrzené
+  rezervace stejného Resource nejsou povolené.
+- Začátek je nejvýše 30 dní dopředu a délka rezervace nejvýše 2 hodiny.
+- Čekající žádost neblokuje Resource; při schválení se dostupnost ověřuje
+  znovu.
+- Žádost o schválení vyprší po 24 hodinách nebo při začátku rezervace,
+  podle toho, co nastane dříve.
 
-## State-changing operation
-DRAFT → CONFIRMED → CANCELLED
-Po vytvoření je rezervace ve stavu DRAFT. Po schválení správcem přejde do CONFIRMED; následně ji lze zrušit a přejde do CANCELLED.
-
-## Common business rule
-Dvě potvrzené rezervace stejného sportoviště se nesmí časově překrývat.
-
-## Domain-specific business rule
-Rezervaci sportoviště lze vytvořit maximálně 30 dní dopředu a maximální délka jedné rezervace je 2 hodiny.
-
-## External / system boundary
-Notification Service – systém jej používá pro odesílání potvrzení rezervace, změn a upozornění na zrušení rezervace.
-
-## Assumption
-Předpokládáme, že každé sportoviště má jednu pevně definovanou dostupnost podle své otevírací doby.
-
-## Unknown
-Není zatím jasné, zda musí být každá rezervace schválena správcem, nebo zda se má po vytvoření automaticky potvrdit.
+## Hranice a otevřené otázky
+Notifikační služba byla navržena v původním rámci, ale její události,
+zprávy ani doručovací pravidla nejsou dosud specifikovány a nejsou součástí
+baseline v0.2. Plánovač, který bude pravidelně spouštět expiraci, a
+databázové záruky pro souběžné rezervace patří do další architektonické
+iterace C03.

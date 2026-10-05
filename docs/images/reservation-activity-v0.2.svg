@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1150" height="960" viewBox="0 0 1150 960" role="img" aria-labelledby="title desc">
+  <title id="title">Reservation activity diagram v0.2</title>
+  <desc id="desc">Five lanes describe create, availability, confirmation, approval and cancellation, including accepted outcomes and errors.</desc>
+  <style>
+    text { font: 15px Arial, sans-serif; fill: #172033; }
+    .heading { font-size: 21px; font-weight: bold; }
+    .lane { fill: #fbfcfe; stroke: #c7d0dc; stroke-width: 1.5; }
+    .action { fill: #fff; stroke: #315d8a; stroke-width: 2; }
+    .decision { fill: #fff; stroke: #53657d; stroke-width: 2; }
+    .ok { fill: #eef8f0; stroke: #34734a; stroke-width: 2; }
+    .error { fill: #fff2f0; stroke: #a84a43; stroke-width: 2; }
+    .line { fill: none; stroke: #53657d; stroke-width: 1.8; }
+    .label { font-size: 13px; fill: #394b63; }
+  </style>
+  <text class="heading" x="575" y="35" text-anchor="middle">Činnosti systému rezervací — v0.2</text>
+
+  <rect class="lane" x="20" y="55" width="1110" height="155" rx="8"/>
+  <text x="45" y="82" font-weight="bold">Create Reservation</text>
+  <rect class="action" x="50" y="112" width="210" height="62" rx="10"/>
+  <text x="155" y="138" text-anchor="middle">Odeslat Resource</text>
+  <text x="155" y="158" text-anchor="middle">a interval</text>
+  <rect class="action" x="320" y="112" width="270" height="62" rx="10"/>
+  <text x="455" y="138" text-anchor="middle">Ověřit uživatele, Resource</text>
+  <text x="455" y="158" text-anchor="middle">a pravidla intervalu</text>
+  <polygon class="decision" points="700,108 770,143 700,178 630,143"/>
+  <text x="700" y="148" text-anchor="middle">Platné?</text>
+  <rect class="ok" x="825" y="95" width="245" height="48" rx="10"/>
+  <text x="947" y="125" text-anchor="middle">Uložit DRAFT, vrátit ID</text>
+  <rect class="error" x="825" y="151" width="245" height="42" rx="10"/>
+  <text x="947" y="177" text-anchor="middle">Odmítnout; nic neuložit</text>
+  <path class="line" d="M260 143h60M590 143h40M770 133h55M770 153h55"/>
+  <text class="label" x="790" y="126">ano</text>
+  <text class="label" x="790" y="174">ne</text>
+
+  <rect class="lane" x="20" y="220" width="1110" height="155" rx="8"/>
+  <text x="45" y="247" font-weight="bold">Check Availability</text>
+  <rect class="action" x="50" y="277" width="210" height="62" rx="10"/>
+  <text x="155" y="303" text-anchor="middle">Zadat Resource</text>
+  <text x="155" y="323" text-anchor="middle">a interval</text>
+  <rect class="action" x="320" y="277" width="270" height="62" rx="10"/>
+  <text x="455" y="303" text-anchor="middle">Ověřit vstup a hledat</text>
+  <text x="455" y="323" text-anchor="middle">CONFIRMED překryv</text>
+  <polygon class="decision" points="700,273 770,308 700,343 630,308"/>
+  <text x="700" y="313" text-anchor="middle">Volný?</text>
+  <rect class="ok" x="825" y="260" width="245" height="48" rx="10"/>
+  <text x="947" y="290" text-anchor="middle">Vrátit AVAILABLE</text>
+  <rect class="ok" x="825" y="316" width="245" height="48" rx="10"/>
+  <text x="947" y="346" text-anchor="middle">Vrátit UNAVAILABLE</text>
+  <path class="line" d="M260 308h60M590 308h40M770 298h55M770 318h55"/>
+  <text class="label" x="790" y="291">ano</text>
+  <text class="label" x="790" y="339">ne</text>
+  <text class="label" x="325" y="360">Neplatný vstup nebo Resource → chyba; žádný zápis.</text>
+
+  <rect class="lane" x="20" y="385" width="1110" height="155" rx="8"/>
+  <text x="45" y="412" font-weight="bold">Confirm Reservation</text>
+  <rect class="action" x="50" y="442" width="210" height="62" rx="10"/>
+  <text x="155" y="468" text-anchor="middle">Vlastník žádá</text>
+  <text x="155" y="488" text-anchor="middle">o potvrzení DRAFT</text>
+  <rect class="action" x="320" y="442" width="270" height="62" rx="10"/>
+  <text x="455" y="468" text-anchor="middle">Ověřit stav, Resource,</text>
+  <text x="455" y="488" text-anchor="middle">čas a kolizi</text>
+  <polygon class="decision" points="700,438 770,473 700,508 630,473"/>
+  <text x="700" y="478" text-anchor="middle">Schválení?</text>
+  <rect class="ok" x="825" y="425" width="245" height="48" rx="10"/>
+  <text x="947" y="455" text-anchor="middle">PENDING_APPROVAL</text>
+  <rect class="ok" x="825" y="481" width="245" height="48" rx="10"/>
+  <text x="947" y="511" text-anchor="middle">CONFIRMED</text>
+  <path class="line" d="M260 473h60M590 473h40M770 463h55M770 483h55"/>
+  <text class="label" x="790" y="456">ano</text>
+  <text class="label" x="790" y="504">ne</text>
+  <text class="label" x="325" y="525">Chyba (včetně kolize) → rezervace zůstává DRAFT.</text>
+
+  <rect class="lane" x="20" y="550" width="1110" height="195" rx="8"/>
+  <text x="45" y="577" font-weight="bold">Approve Reservation</text>
+  <rect class="action" x="50" y="607" width="210" height="80" rx="10"/>
+  <text x="155" y="637" text-anchor="middle">Správce zvolí</text>
+  <text x="155" y="658" text-anchor="middle">schválit / zamítnout</text>
+  <rect class="action" x="320" y="607" width="270" height="80" rx="10"/>
+  <text x="455" y="637" text-anchor="middle">Ověřit oprávnění, stav</text>
+  <text x="455" y="658" text-anchor="middle">a limit 24 h / začátek</text>
+  <polygon class="decision" points="700,603 770,648 700,693 630,648"/>
+  <text x="700" y="653" text-anchor="middle">Rozhodnutí?</text>
+  <rect class="ok" x="825" y="590" width="245" height="48" rx="10"/>
+  <text x="947" y="620" text-anchor="middle">Zamítnout → REJECTED</text>
+  <rect class="ok" x="825" y="646" width="245" height="48" rx="10"/>
+  <text x="947" y="676" text-anchor="middle">Schválit → znovu ověřit</text>
+  <rect class="error" x="825" y="702" width="245" height="32" rx="10"/>
+  <text x="947" y="723" text-anchor="middle">Vypršelo → EXPIRED</text>
+  <path class="line" d="M260 647h60M590 647h40M770 632h55M770 654h55M700 693v25h125"/>
+  <text class="label" x="790" y="628">zamítnout</text>
+  <text class="label" x="790" y="673">schválit</text>
+  <text class="label" x="710" y="714">vypršelo</text>
+  <text class="label" x="320" y="729">Schválení bez kolize → CONFIRMED; kolize → zůstává PENDING_APPROVAL.</text>
+
+  <rect class="lane" x="20" y="755" width="1110" height="155" rx="8"/>
+  <text x="45" y="782" font-weight="bold">Cancel Reservation</text>
+  <rect class="action" x="50" y="812" width="210" height="62" rx="10"/>
+  <text x="155" y="838" text-anchor="middle">Vlastník žádá</text>
+  <text x="155" y="858" text-anchor="middle">o zrušení</text>
+  <rect class="action" x="320" y="812" width="270" height="62" rx="10"/>
+  <text x="455" y="838" text-anchor="middle">Ověřit vlastníka, stav</text>
+  <text x="455" y="858" text-anchor="middle">a čas začátku</text>
+  <polygon class="decision" points="700,808 770,843 700,878 630,843"/>
+  <text x="700" y="848" text-anchor="middle">Povoleno?</text>
+  <rect class="ok" x="825" y="795" width="245" height="48" rx="10"/>
+  <text x="947" y="825" text-anchor="middle">Nastavit CANCELLED</text>
+  <rect class="error" x="825" y="851" width="245" height="48" rx="10"/>
+  <text x="947" y="881" text-anchor="middle">Odmítnout</text>
+  <path class="line" d="M260 843h60M590 843h40M770 833h55M770 853h55"/>
+  <text class="label" x="790" y="826">ano</text>
+  <text class="label" x="790" y="874">ne</text>
+</svg>

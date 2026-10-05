@@ -11,8 +11,11 @@ class SportAdmin(admin.ModelAdmin):
 
 @admin.register(Resource)
 class ResourceAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'sport', 'location', 'opens_at', 'closes_at', 'is_available')
-    list_filter = ('sport', 'is_available')
+    list_display = (
+        'id', 'name', 'sport', 'location', 'opens_at', 'closes_at',
+        'is_available', 'requires_approval',
+    )
+    list_filter = ('sport', 'is_available', 'requires_approval')
     search_fields = ('name', 'location', 'sport__name')
     list_select_related = ('sport',)
     autocomplete_fields = ('sport',)
@@ -25,6 +28,6 @@ class ReservationAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'resource__name')
     list_select_related = ('user', 'resource')
     autocomplete_fields = ('user', 'resource')
-    readonly_fields = ('created_at',)
+    readonly_fields = ('created_at', 'approval_requested_at')
     date_hierarchy = 'starts_at'
     ordering = ('-starts_at',)

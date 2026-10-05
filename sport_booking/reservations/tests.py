@@ -1,6 +1,9 @@
+import json
 from datetime import time, timedelta
+from urllib.parse import urlencode
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import TestCase
@@ -77,3 +80,228 @@ class ReservationPersistenceTests(TestCase):
             with self.subTest(field=field):
                 with self.assertRaises(IntegrityError), transaction.atomic():
                     self.create_reservation(**{field: None})
+
+
+class ReservationApiTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = get_user_model().objects.create_user(username='customer')
+        cls.staff = get_user_model().objects.create_user(
+            username='manager',
+            is_staff=True,
+        )
+        cls.sport = Sport.objects.create(name='Tennis')
+        cls.resource = Resource.objects.create(
+            name='Court 1',
+            sport=cls.sport,
+            location='Ostrava',
+            opens_at=time(8),
+            closes_at=time(22),
+        )
+        cls.approval_resource = Resource.objects.create(
+            name='Court 2',
+            sport=cls.sport,
+            location='Ostrava',
+            opens_at=time(8),
+            closes_at=time(22),
+            requires_approval=True,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.user)
+
+    def interval(self, starts_at=None, duration=timedelta(hours=1)):
+        starts_at = starts_at or timezone.now() + timedelta(days=1)
+        return {
+            'starts_at': starts_at.isoformat(),
+            'ends_at': (starts_at + duration).isoformat(),
+        }
+
+    def create(self, resource=None, **interval):
+        body = {
+            'resource_id': (resource or self.resource).pk,
+            **(interval or self.interval()),
+        }
+        response = self.client.post(
+            '/api/reservations/',
+            json.dumps(body),
+            content_type='application/json',
+        )
+        return response
+
+    def decide(self, reservation_id, decision, staff=True):
+        if staff:
+            self.client.force_login(self.staff)
+        return self.client.post(
+            f'/api/reservations/{reservation_id}/approve/',
+            json.dumps({'decision': decision}),
+            content_type='application/json',
+        )
+
+    def test_create_succeeds_and_rejects_invalid_interval(self):
+        response = self.create()
+        self.assertEqual(response.status_code, 201)
+        reservation = Reservation.objects.get(pk=response.json()['id'])
+        self.assertEqual(reservation.status, Reservation.Status.DRAFT)
+
+        starts_at = timezone.now() + timedelta(days=1)
+        invalid = self.create(
+            starts_at=starts_at.isoformat(),
+            ends_at=starts_at.isoformat(),
+        )
+        self.assertEqual(invalid.status_code, 400)
+
+    def test_availability_checks_confirmed_only_and_half_open_edges(self):
+        existing = Reservation.objects.create(
+            user=self.user,
+            resource=self.resource,
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=1),
+            status=Reservation.Status.CONFIRMED,
+        )
+        adjacent = {
+            'resource_id': self.resource.pk,
+            **self.interval(starts_at=existing.ends_at),
+        }
+        response = self.client.get('/api/availability/', adjacent)
+        self.assertEqual(response.json()['availability'], 'AVAILABLE')
+
+        overlapping = {
+            'resource_id': self.resource.pk,
+            **self.interval(starts_at=existing.starts_at + timedelta(minutes=30)),
+        }
+        response = self.client.get('/api/availability/', overlapping)
+        self.assertEqual(response.json()['availability'], 'UNAVAILABLE')
+
+        self.create(resource=self.approval_resource)
+        draft_query = {
+            'resource_id': self.approval_resource.pk,
+            **self.interval(),
+        }
+        response = self.client.get('/api/availability/', draft_query)
+        self.assertEqual(response.json()['availability'], 'AVAILABLE')
+
+    def test_confirm_conflict_is_rejected_and_normal_confirm_succeeds(self):
+        first = self.create()
+        first_id = first.json()['id']
+        self.assertEqual(
+            self.client.post(f'/api/reservations/{first_id}/confirm/').status_code,
+            200,
+        )
+        second = self.create()
+        self.assertEqual(
+            self.client.post(
+                f"/api/reservations/{second.json()['id']}/confirm/"
+            ).status_code,
+            409,
+        )
+        self.assertEqual(
+            Reservation.objects.get(pk=second.json()['id']).status,
+            Reservation.Status.DRAFT,
+        )
+
+    def test_approval_request_does_not_block_until_staff_approves(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        response = self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        self.assertEqual(response.json()['status'], Reservation.Status.PENDING_APPROVAL)
+
+        query = {
+            'resource_id': self.approval_resource.pk,
+            **self.interval(),
+        }
+        response = self.client.get('/api/availability/', query)
+        self.assertEqual(response.json()['availability'], 'AVAILABLE')
+
+        self.assertEqual(self.decide(reservation_id, 'approve').status_code, 200)
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.CONFIRMED,
+        )
+
+    def test_delayed_approval_succeeds_before_timeout(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        reservation = Reservation.objects.get(pk=reservation_id)
+        reservation.approval_requested_at -= timedelta(hours=23)
+        reservation.save(update_fields=('approval_requested_at',))
+
+        response = self.decide(reservation_id, 'approve')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['status'], Reservation.Status.CONFIRMED)
+
+    def test_new_conflict_prevents_approval_and_leaves_request_pending(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        pending = Reservation.objects.get(pk=reservation_id)
+        Reservation.objects.create(
+            user=self.user,
+            resource=self.approval_resource,
+            starts_at=pending.starts_at,
+            ends_at=pending.ends_at,
+            status=Reservation.Status.CONFIRMED,
+        )
+
+        response = self.decide(reservation_id, 'approve')
+        self.assertEqual(response.status_code, 409)
+        pending.refresh_from_db()
+        self.assertEqual(pending.status, Reservation.Status.PENDING_APPROVAL)
+
+    def test_staff_can_reject_but_non_staff_cannot_decide(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+
+        denied = self.decide(reservation_id, 'approve', staff=False)
+        self.assertEqual(denied.status_code, 403)
+        self.assertEqual(self.decide(reservation_id, 'reject').status_code, 200)
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.REJECTED,
+        )
+
+    def test_expired_approval_cannot_be_approved(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        reservation = Reservation.objects.get(pk=reservation_id)
+        reservation.approval_requested_at = timezone.now() - timedelta(hours=24)
+        reservation.save(update_fields=('approval_requested_at',))
+
+        response = self.decide(reservation_id, 'approve')
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()['status'], Reservation.Status.EXPIRED)
+
+    def test_expiry_management_command_updates_old_requests(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        reservation = Reservation.objects.get(pk=reservation_id)
+        reservation.approval_requested_at = timezone.now() - timedelta(hours=24)
+        reservation.save(update_fields=('approval_requested_at',))
+
+        call_command('expire_reservations')
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, Reservation.Status.EXPIRED)
+
+    def test_owner_can_cancel_pending_approval_but_not_after_start(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        cancelled = self.client.post(f'/api/reservations/{reservation_id}/cancel/')
+        self.assertEqual(cancelled.json()['status'], Reservation.Status.CANCELLED)
+        self.assertTrue(Reservation.objects.filter(pk=reservation_id).exists())
+        self.assertEqual(self.decide(reservation_id, 'approve').status_code, 409)
+
+        started = Reservation.objects.create(
+            user=self.user,
+            resource=self.resource,
+            starts_at=timezone.now() - timedelta(minutes=1),
+            ends_at=timezone.now() + timedelta(minutes=59),
+            status=Reservation.Status.CONFIRMED,
+        )
+        self.client.force_login(self.user)
+        rejected = self.client.post(f'/api/reservations/{started.pk}/cancel/')
+        self.assertEqual(rejected.status_code, 409)
