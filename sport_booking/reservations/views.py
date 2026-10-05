@@ -35,8 +35,11 @@ def _parse_interval(data):
     end_value = data.get('ends_at', '')
     if not isinstance(start_value, str) or not isinstance(end_value, str):
         return None, None, 'Use ISO 8601 start and end datetimes.'
-    starts_at = parse_datetime(start_value)
-    ends_at = parse_datetime(end_value)
+    try:
+        starts_at = parse_datetime(start_value)
+        ends_at = parse_datetime(end_value)
+    except ValueError:
+        return None, None, 'Use valid ISO 8601 start and end datetimes.'
     if starts_at is None or ends_at is None:
         return None, None, 'Use ISO 8601 start and end datetimes.'
     if not timezone.is_aware(starts_at) or not timezone.is_aware(ends_at):
@@ -74,6 +77,18 @@ def _reservation_json(reservation):
         'starts_at': reservation.starts_at.isoformat(),
         'ends_at': reservation.ends_at.isoformat(),
     }
+
+
+def _expire_if_due(reservation, now):
+    if reservation.status == Reservation.Status.PENDING_APPROVAL and (
+        reservation.approval_requested_at is None
+        or reservation.approval_requested_at + APPROVAL_TIMEOUT <= now
+        or reservation.starts_at <= now
+    ):
+        reservation.status = Reservation.Status.EXPIRED
+        reservation.save(update_fields=('status',))
+        return True
+    return False
 
 
 @require_POST
@@ -141,7 +156,8 @@ def confirm_reservation(request: HttpRequest, reservation_id: int):
             Resource.objects.select_for_update(),
             pk=reservation.resource_id,
         )
-        error_message = _interval_error(reservation.starts_at, reservation.ends_at)
+        now = timezone.now()
+        error_message = _interval_error(reservation.starts_at, reservation.ends_at, now)
         if error_message:
             return JsonResponse({'error': error_message}, status=409)
         if not resource.is_available:
@@ -150,7 +166,7 @@ def confirm_reservation(request: HttpRequest, reservation_id: int):
             return JsonResponse({'error': 'Reservation interval is already taken.'}, status=409)
         if resource.requires_approval:
             reservation.status = Reservation.Status.PENDING_APPROVAL
-            reservation.approval_requested_at = timezone.now()
+            reservation.approval_requested_at = now
             reservation.save(update_fields=('status', 'approval_requested_at'))
             return JsonResponse(_reservation_json(reservation))
         reservation.status = Reservation.Status.CONFIRMED
@@ -179,14 +195,12 @@ def approve_reservation(request: HttpRequest, reservation_id: int):
         )
         if reservation.status != Reservation.Status.PENDING_APPROVAL:
             return JsonResponse({'error': 'Reservation is not awaiting approval.'}, status=409)
+        resource = get_object_or_404(
+            Resource.objects.select_for_update(),
+            pk=reservation.resource_id,
+        )
         now = timezone.now()
-        if (
-            reservation.approval_requested_at is None
-            or reservation.approval_requested_at + APPROVAL_TIMEOUT <= now
-            or reservation.starts_at <= now
-        ):
-            reservation.status = Reservation.Status.EXPIRED
-            reservation.save(update_fields=('status',))
+        if _expire_if_due(reservation, now):
             return JsonResponse(
                 {'error': 'Approval request expired.', 'status': reservation.status},
                 status=409,
@@ -196,10 +210,6 @@ def approve_reservation(request: HttpRequest, reservation_id: int):
             reservation.save(update_fields=('status',))
             return JsonResponse(_reservation_json(reservation))
 
-        resource = get_object_or_404(
-            Resource.objects.select_for_update(),
-            pk=reservation.resource_id,
-        )
         error_message = _interval_error(reservation.starts_at, reservation.ends_at, now)
         if error_message:
             return JsonResponse({'error': error_message}, status=409)
@@ -223,13 +233,19 @@ def cancel_reservation(request: HttpRequest, reservation_id: int):
             pk=reservation_id,
             user=request.user,
         )
+        now = timezone.now()
+        if _expire_if_due(reservation, now):
+            return JsonResponse(
+                {'error': 'Approval request expired.', 'status': reservation.status},
+                status=409,
+            )
         if reservation.status not in (
             Reservation.Status.DRAFT,
             Reservation.Status.PENDING_APPROVAL,
             Reservation.Status.CONFIRMED,
         ):
             return JsonResponse({'error': 'Reservation cannot be cancelled in this state.'}, status=409)
-        if timezone.now() >= reservation.starts_at:
+        if now >= reservation.starts_at:
             return JsonResponse({'error': 'Reservation has already started.'}, status=409)
         reservation.status = Reservation.Status.CANCELLED
         reservation.save(update_fields=('status',))

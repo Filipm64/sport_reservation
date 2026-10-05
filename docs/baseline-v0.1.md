@@ -88,9 +88,10 @@ požadovaný interval potvrdit.
 
 **Pozorovatelný požadavek:** Pro platný interval systém vrátí `AVAILABLE`,
 pokud je Resource dostupný a nekoliduje s žádnou `CONFIRMED` rezervací;
-jinak vrátí `UNAVAILABLE`. Kontrola nic nezapisuje a nic neblokuje.
+jinak vrátí `UNAVAILABLE`. Kontrola nic nezapisuje a nic neblokuje. Vyžaduje přihlášeného uživatele.
 
 **Předpoklady:**
+- Uživatel je přihlášen.
 - Resource existuje.
 - Interval splňuje BR-01 a BR-03.
 
@@ -109,6 +110,7 @@ jinak vrátí `UNAVAILABLE`. Kontrola nic nezapisuje a nic neblokuje.
 4. Systém vrátí výsledek.
 
 **Alternativní / chybové výsledky:**
+- Nepřihlášený uživatel → odmítnuto.
 - Neznámý Resource nebo neplatný interval → chyba; nejde o výsledek
   `AVAILABLE`.
 - Resource je označen jako nedostupný nebo existuje překrývající se
@@ -195,7 +197,7 @@ záznam. Zrušená rezervace již Resource neblokuje.
 
 **Změna stavu:** `DRAFT → CANCELLED` nebo `CONFIRMED → CANCELLED`.
 
-**Odkaz na pravidla:** BR-02, BR-05.
+**Odkaz na pravidla:** BR-02, BR-05, BR-06.
 
 **Hlavní úspěšný scénář:**
 1. Vlastník požádá o zrušení rezervace.
@@ -207,6 +209,9 @@ záznam. Zrušená rezervace již Resource neblokuje.
 - Rezervace neexistuje nebo nepatří uživateli → požadavek je odmítnut.
 - Rezervace je již `CANCELLED` → požadavek je odmítnut, stav se nezmění.
 - Rezervace již začala → požadavek je odmítnut, stav se nezmění.
+- Souběh Confirm a Cancel před začátkem se vyhodnotí jako sériové pořadí:
+  Cancel první → Confirm odmítnut; Confirm první → obě operace uspějí.
+  V obou případech je konečný stav `CANCELLED`.
 - Jiný stav než `DRAFT` nebo `CONFIRMED` → požadavek je odmítnut,
   stav se nezmění.
 
@@ -312,3 +317,25 @@ flowchart TD
 - Platba, automatické rušení po jednom dni, důvod zrušení a otevírací doba
   nebyly v zadání určeny jako závazné požadavky, a proto nejsou v baseline
   vymyšleny.
+
+## Zdroj času a původ doménových voleb
+
+Čas vyhodnocuje server (`django.utils.timezone.now()`), v UTC; vstupy
+obsahují časové pásmo a porovnává se skutečný okamžik. `now` se odečte při
+ověřování operace uvnitř transakce, nikoliv při odeslání uživatelem.
+V testech se čas fixuje pro přesné hraniční příklady.
+Limity 30 dní a 2 hodiny i politika rušení jsou převzaté z existujícího
+projektového rámce, nikoliv nařízené referenční ukázkou zadání C02.
+Jejich business zdůvodnění a schválení musí tým při obhajobě potvrdit.
+
+## Dohledatelnost a schválení
+
+OP-01 odpovídá REQ-01, OP-02 REQ-02, OP-03 REQ-03 a REQ-04
+(souběh), OP-04 REQ-05. Kontrola jednotlivých požadavků je v
+[revizi požadavků](requirements-review.md). Doménová pravidla se neodvozují
+z konkrétní databáze.
+
+**Týmové schválení v0.1: nedoloženo.** Tým doplní skutečné datum,
+schvalující členy a odkaz na schválenou revizi. Současná aplikace v0.2
+ověřuje zachované základní chování; není doloženo historické spuštění
+samostatné aplikace v0.1 ani odsouhlasení této verze před změnou.

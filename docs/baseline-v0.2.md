@@ -1,8 +1,8 @@
 # Specification Baseline v0.2
 
 **Změna:** C02 — schvalovací proces  
-**Stav:** schváleno zadavatelem 5. 10. 2026; změny aplikace ověřeny
-automatickými testy.
+**Stav:** technicky revidováno 5. 10. 2026 a ověřeno testy;
+formální týmové schválení není doloženo.
 
 Tato verze navazuje na [baseline v0.1](./baseline-v0.1.md). Rezervace se
 vytvoří jako `DRAFT`. U Resource, který vyžaduje schválení, uživatel požádá
@@ -41,8 +41,9 @@ na schválení.
 
 **Změněná pravidla / význam stavů:** Podrobnosti jsou v BR-01 až BR-07
 níže. `PENDING_APPROVAL` není alokace. `REJECTED`, `EXPIRED` a
-`CANCELLED` jsou konečné stavy. Při souběhu zrušení a schválení rozhodne
-první úspěšná změna stavu; druhá operace již stav nepovolí.
+`CANCELLED` jsou konečné stavy. Souběh se vyhodnotí jako sériové pořadí: zrušení před schválením
+znemožní schválení; schválení před zrušením umožní obě operace.
+Před začátkem a před expirací je v obou pořadích výsledkem `CANCELLED`.
 
 **Změna diagramu případů užití:** Přibyl aktér Správce sportoviště a jeho
 cíl `Approve Reservation`.
@@ -57,8 +58,9 @@ vypršení po 24 hodinách, dostupnost během čekání, kolize vzniklá během
 **Architektonické drivery pro C03:** Je potřeba trvale uložit čas podání
 žádosti, pravidelně spouštět expiraci a bezpečně synchronizovat schválení,
 potvrzení a zrušení. Ukázka používá Django management command
-`expire_reservations`; plánované spouštění a silnější souběžné záruky
-zůstávají tématem C03.
+`expire_reservations`; plánované spouštění a škálování souběhu
+zůstávají tématem C03. Konkrétní scénáře a kritéria jsou v
+[architektonických driverech](architecture-drivers.md).
 
 ## Doménová pravidla
 
@@ -79,13 +81,18 @@ zůstávají tématem C03.
   stavu `DRAFT`, `PENDING_APPROVAL` nebo `CONFIRMED`. Záznam se nemaže.
   Opakované zrušení ani zrušení po začátku není povoleno.
 - **BR-06 — Souběh:** V jednom výsledném stavu nesmějí být dvě
-  překrývající se rezervace stejného Resource `CONFIRMED`. U souběžného
-  rozhodování nad jednou rezervací uspěje jen první povolená změna stavu.
+  překrývající se rezervace stejného Resource `CONFIRMED`. Souběžné operace mají výsledek odpovídající sériovému pořadí.
+  Pokud Confirm či Approve uspěje dříve než Cancel, vlastník stále může
+  před začátkem zrušit `CONFIRMED`. Pokud Cancel uspěje dříve,
+  potvrzení/schválení již není povolené.
 - **BR-07 — Schvalování:** Resource s `requires_approval = false` se může
   potvrdit bez správce. U Resource s `requires_approval = true` přejde
   potvrzovací žádost do `PENDING_APPROVAL`. Žádost vyprší v okamžiku
   `approval_requested_at + 24 hodin`, nebo při začátku rezervace, podle
-  toho, co nastane dříve. Po vypršení má stav `EXPIRED`.
+  toho, co nastane dříve. Po vypršení již nesmí být schválena, zamítnuta ani zrušena.
+  Stav `EXPIRED` se uloží při pokusu o Approve/Cancel nebo při běhu
+  expiračního příkazu. Mezi těmito událostmi může uložený stav zůstat
+  `PENDING_APPROVAL`; nejde o platnou žádost a Resource stejně neblokuje.
 
 ## OP-01 — Create Reservation
 
@@ -130,7 +137,7 @@ interval potvrdit.
 dostupný a v intervalu není jeho `CONFIRMED` rezervace; jinak vrátí
 `UNAVAILABLE`. Žádost čekající na schválení dostupnost nemění.
 
-**Předpoklady:** Resource existuje; interval splňuje BR-01 a BR-03.
+**Předpoklady:** Uživatel je přihlášen; Resource existuje; interval splňuje BR-01 a BR-03.
 
 **Stav po úspěšném provedení:** Vrácen výsledek bez změny záznamů.
 
@@ -144,7 +151,8 @@ dostupný a v intervalu není jeho `CONFIRMED` rezervace; jinak vrátí
    rezervacemi.
 3. Systém vrátí výsledek.
 
-**Alternativní / chybové výsledky:** Neplatný vstup nebo neznámý Resource
+**Alternativní / chybové výsledky:** Nepřihlášený uživatel → odmítnuto.
+Neplatný vstup nebo neznámý Resource
 → chyba; nedostupný Resource či potvrzený překryv → `UNAVAILABLE`.
 
 **Příklady ověření:** Potvrzená `[10:00,11:00)` dává dotazům
@@ -221,6 +229,8 @@ a ještě nezačala.
 
 **Alternativní / chybové výsledky:** Cizí/neexistující rezervace,
 nepovolený stav nebo začátek již nastal → odmítnuto.
+Vypršelá čekající žádost → `EXPIRED` a odmítnuto (BR-07).
+Souběh s Confirm/Approve odpovídá BR-06.
 
 **Příklady ověření:** Čekající žádost před začátkem → `CANCELLED` a
 zůstává uložená; rezervace přesně na hranici začátku → odmítnuto.
@@ -280,9 +290,12 @@ rezervace začíná nejdříve nyní, maximum je 30 dní a 2 hodiny; schválení
 vyprší při 24 hodinách nebo při začátku rezervace. Potřeba C02 je zachytit
 zpožděné, zamítnuté a nevyřízené žádosti. Jedinou blokující rezervací je
 `CONFIRMED`; proto se kolize znovu ověřuje při schválení. Oprávnění
-schvalovat je v ukázce ověřitelné příznakem správce. Souběh nad stejným
-záznamem je serializován databázovou transakcí; databázově specifické
-záruky souběhu nad různými rezervacemi jsou architektonický driver C03.
+schvalovat je v ukázce ověřitelné příznakem správce. REQ-01 až REQ-06 mají jednotlivé revizní záznamy v
+[revizi požadavků](requirements-review.md). SQLite nyní zahajuje zápisové
+transakce v režimu IMMEDIATE, takže rozhodující čtení a zápis jsou
+serializované i nad různými rezervacemi. Pět testů souběhu prošly nad
+souborovou databází. Přenos této záruky do jiné databáze a její škálování
+jsou drivery C03; nejsou důvodem odložit invariant BR-02.
 
 ## Diagram případů užití
 
@@ -293,11 +306,62 @@ záruky souběhu nad různými rezervacemi jsou architektonický driver C03.
 ![Životní cyklus Reservation v0.2](images/reservation-state-v0.2.svg)
 
 `PENDING_APPROVAL` může skončit schválením, zamítnutím, vypršením nebo
-zrušením vlastníkem. Všechny tyto konečné stavy zachovávají záznam.
+zrušením vlastníkem. `CONFIRMED` dále umožňuje Cancel; konečné jsou pouze
+`REJECTED`, `EXPIRED` a `CANCELLED`. Všechny stavy zachovávají záznam.
+Podmínky přechodů odkazují na BR-01 až BR-07; diagram zkracuje popisky.
 
 ## Diagram aktivit
 
-![Aktivity všech operací v0.2](images/reservation-activity-v0.2.svg)
+Aktivity jednotlivých operací; každá větev končí odpovědí uživateli.
+
+```mermaid
+flowchart TD
+    start((Začátek)) --> op{Operace}
+    op -->|Create| c{Přihlášen, Resource existuje, platný interval?}
+    c -->|ano| draft[Uložit DRAFT a vrátit ID]
+    c -->|ne| error[Odmítnout bez změny]
+    op -->|Availability| a{Přihlášen, Resource existuje, platný interval?}
+    a -->|ne| error
+    a -->|ano| free{Resource dostupný a bez CONFIRMED překryvu?}
+    free -->|ano| available[Vrátit AVAILABLE bez zápisu]
+    free -->|ne| unavailable[Vrátit UNAVAILABLE bez zápisu]
+    op -->|Confirm| f{Vlastník DRAFT, platný interval, dostupný Resource a bez kolize?}
+    f -->|ne| error
+    f -->|ano| approval{Vyžaduje Resource schválení?}
+    approval -->|ano| pending[Uložit PENDING_APPROVAL a čas žádosti]
+    approval -->|ne| confirmed[Uložit CONFIRMED]
+    op -->|Approve| p{Přihlášený správce, PENDING_APPROVAL a platné rozhodnutí?}
+    p -->|ne| error
+    p -->|ano| due{Deadline dosažen?}
+    due -->|ano| expired[Uložit EXPIRED a odmítnout]
+    due -->|ne| decision{Rozhodnutí správce}
+    decision -->|zamítnout| rejected[Uložit REJECTED]
+    decision -->|schválit| valid{Platný interval, dostupný Resource a bez kolize?}
+    valid -->|ano| confirmed
+    valid -->|ne| keep[Odmítnout, ponechat PENDING_APPROVAL]
+    op -->|Cancel| x{Přihlášený vlastník existující rezervace?}
+    x -->|ne| error
+    x -->|ano| xd{Čekající žádost s dosaženým deadline?}
+    xd -->|ano| expired
+    xd -->|ne| cancellable{Povolený stav a now před start?}
+    cancellable -->|ano| cancelled[Uložit CANCELLED, zachovat záznam]
+    cancellable -->|ne| error
+    draft --> finish((Konec))
+    error --> finish
+    available --> finish
+    unavailable --> finish
+    pending --> finish
+    confirmed --> finish
+    expired --> finish
+    rejected --> finish
+    keep --> finish
+    cancelled --> finish
+```
+
+Kontrola a změna stavu u Confirm, Approve a Cancel tvoří jednu
+serializovanou operaci (BR-06). Neplatné oprávnění nikdy neprovádí změnu.
+Expirační příkaz samostatně mění pouze čekající žádosti s dosaženým deadline
+na EXPIRED; ostatní záznamy nemění a opakovaný běh je bezpečný.
 
 ## Kontrola konzistence a nedotčený rozsah
 
@@ -307,8 +371,8 @@ zrušením vlastníkem. Všechny tyto konečné stavy zachovávají záznam.
   `CONFIRMED`. Approval při rozhodnutí kontroluje kolize znovu.
 - Zrušení čekající žádosti odpovídá stavovému diagramu a uvolní žádost bez
   smazání.
-- Čekající žádost a schválení/zrušení se nad jedním záznamem navzájem
-  vylučují: první úspěšná změna stavu rozhodne, druhá už stav nepovolí.
+- Schválení a zrušení jsou serializované podle BR-06. Schválení může
+  předcházet úspěšnému zrušení; zrušení již neumožní pozdější schválení.
 - Otevírací doba, platby a notifikace nejsou součástí operací v0.2.
   Notifikační služba uvedená v projektovém rámci nemá dosud popsané
   pozorovatelné chování, a proto není aktérem těchto use cases.
@@ -320,9 +384,31 @@ zrušením vlastníkem. Všechny tyto konečné stavy zachovávají záznam.
 ## Zbývající předpoklad / neznámá
 
 - Doba schválení 24 hodin, neblokování Resource stavem
-  `PENDING_APPROVAL` a oprávnění `is_staff` byly potvrzeny zadavatelem
-  této práce. Formální schválení výsledné baseline týmem ještě není
-  v repozitáři zaznamenáno.
+  `PENDING_APPROVAL` a oprávnění `is_staff` jsou převzaté volby stávajícího
+  projektu. Doklad jejich schválení zadavatelem ani týmové schválení
+  výsledné baseline není při této revizi k dispozici; tým je musí potvrdit.
 - Při neúspěšném schválení kvůli kolizi žádost zůstává čekající až do
   zamítnutí, zrušení nebo vypršení.
 - Notifikace uživatelům po změně stavu nejsou specifikovány.
+
+## Dohledatelnost, čas a hranice ukázky
+
+OP-01 = REQ-01; OP-02 = REQ-02; OP-03 = REQ-03 a REQ-04;
+OP-04 = REQ-05; OP-05 = REQ-06. Zdroj času je serverové
+`django.utils.timezone.now()` v UTC. Čas se odečte při rozhodování po
+získání transakčních zámků, nikoli podle hodin klienta. Při `now = deadline`
+již žádost vypršela. Hodnoty 24 hodin, 30 dní a 2 hodin jsou explicitní
+volby projektu určené k týmovému potvrzení, nikoliv povinné hodnoty zadání.
+
+Rezervační admin umožňuje pouze čtení záznamů; vytvoření, změna intervalu,
+ruční změna stavu ani smazání nesmí obcházet popsané operace.
+Správa Sport/Resource zůstává v adminu. Otevírací doba je uložené metadata,
+její vynucování není přijato jako požadavek této baseline.
+Záruky souběhu platí pro popsané API a expirační příkaz v lokální SQLite
+ukázce. Přímé změny SQL/ORM mimo tyto vstupy nejsou business operace.
+Po vyčerpání databázového timeoutu není v této ukázce definována uživatelská
+politika retry; to je omezení pro C03, nikoli výjimka z exkluzivity.
+
+**Týmové schválení v0.2: nedoloženo.** Doplnit skutečné datum, členy
+a schválenou revizi. Zápis dopadu výše existuje, ale pořadí „analýza dopadu
+před implementací“ nelze zpětně prohlásit za prokázané bez evidence týmu.

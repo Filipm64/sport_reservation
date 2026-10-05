@@ -28,6 +28,15 @@ class ReservationAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'user__email', 'resource__name')
     list_select_related = ('user', 'resource')
     autocomplete_fields = ('user', 'resource')
-    readonly_fields = ('created_at', 'approval_requested_at')
+    readonly_fields = (
+        'user', 'resource', 'starts_at', 'ends_at', 'status',
+        'created_at', 'approval_requested_at',
+    )
     date_hierarchy = 'starts_at'
     ordering = ('-starts_at',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

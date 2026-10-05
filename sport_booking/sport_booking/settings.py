@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -77,6 +78,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        # SQLite has no row locks: acquire its write lock before reading state.
+        'OPTIONS': {'transaction_mode': 'IMMEDIATE', 'timeout': 20},
+        'TEST': {'NAME': os.environ.get('SPORT_BOOKING_TEST_DB')},
     }
 }
 

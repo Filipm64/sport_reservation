@@ -1,6 +1,6 @@
 import json
 from datetime import time, timedelta
-from urllib.parse import urlencode
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -305,3 +305,126 @@ class ReservationApiTests(TestCase):
         self.client.force_login(self.user)
         rejected = self.client.post(f'/api/reservations/{started.pk}/cancel/')
         self.assertEqual(rejected.status_code, 409)
+
+
+    def test_invalid_calendar_date_returns_error_without_creating(self):
+        response = self.create(starts_at='2026-02-30T12:00:00Z',
+                               ends_at='2026-02-30T13:00:00Z')
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(Reservation.objects.count(), 0)
+
+    def test_exact_time_limits_and_exceeded_limits(self):
+        now = timezone.now()
+        with patch('reservations.views.timezone.now', return_value=now):
+            for offset, duration, expected in (
+                (timedelta(0), timedelta(hours=2), 201),
+                (timedelta(days=30), timedelta(hours=2), 201),
+                (timedelta(days=30, microseconds=1), timedelta(hours=1), 400),
+                (timedelta(days=1), timedelta(hours=2, microseconds=1), 400),
+                (timedelta(microseconds=-1), timedelta(hours=1), 400),
+            ):
+                with self.subTest(offset=offset, duration=duration):
+                    response = self.create(**self.interval(now + offset, duration))
+                    self.assertEqual(response.status_code, expected)
+
+    def test_authentication_ownership_and_unknown_resource(self):
+        reservation_id = self.create().json()['id']
+        self.client.logout()
+        self.assertEqual(self.create().status_code, 401)
+        self.assertEqual(self.client.get('/api/availability/').status_code, 401)
+        other = get_user_model().objects.create_user(username='other')
+        self.client.force_login(other)
+        for operation in ('confirm', 'cancel'):
+            self.assertEqual(self.client.post(
+                f'/api/reservations/{reservation_id}/{operation}/'
+            ).status_code, 404)
+        response = self.client.post('/api/reservations/', json.dumps({
+            'resource_id': 999999, **self.interval(),
+        }), content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(Reservation.objects.count(), 1)
+
+    def test_inactive_resource_and_invalid_availability(self):
+        reservation_id = self.create().json()['id']
+        self.resource.is_available = False
+        self.resource.save()
+        query = {'resource_id': self.resource.pk, **self.interval()}
+        self.assertEqual(self.client.get('/api/availability/', query).json()
+                         ['availability'], 'UNAVAILABLE')
+        self.assertEqual(self.client.post(
+            f'/api/reservations/{reservation_id}/confirm/').status_code, 409)
+        query['ends_at'] = query['starts_at']
+        self.assertEqual(self.client.get('/api/availability/', query).status_code, 400)
+        self.assertEqual(Reservation.objects.get(pk=reservation_id).status, 'DRAFT')
+
+    def test_cancel_draft_and_confirmed_releases_resource_and_rejects_repeat(self):
+        for confirmed in (False, True):
+            with self.subTest(confirmed=confirmed):
+                reservation_id = self.create().json()['id']
+                if confirmed:
+                    self.assertEqual(self.client.post(
+                        f'/api/reservations/{reservation_id}/confirm/').status_code, 200)
+                self.assertEqual(self.client.post(
+                    f'/api/reservations/{reservation_id}/cancel/').status_code, 200)
+                self.assertEqual(self.client.post(
+                    f'/api/reservations/{reservation_id}/cancel/').status_code, 409)
+                self.assertEqual(Reservation.objects.get(pk=reservation_id).status, 'CANCELLED')
+                query = {'resource_id': self.resource.pk, **self.interval()}
+                self.assertEqual(self.client.get('/api/availability/', query).json()
+                                 ['availability'], 'AVAILABLE')
+
+    def test_cancel_at_exact_start_is_rejected(self):
+        reservation_id = self.create().json()['id']
+        reservation = Reservation.objects.get(pk=reservation_id)
+        with patch('reservations.views.timezone.now', return_value=reservation.starts_at):
+            response = self.client.post(f'/api/reservations/{reservation_id}/cancel/')
+        self.assertEqual(response.status_code, 409)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, 'DRAFT')
+
+    def test_expiry_exact_deadline_on_approve_cancel_and_command(self):
+        now = timezone.now()
+        for action in ('approve', 'cancel', 'command'):
+            for deadline in ('timeout', 'start'):
+                with self.subTest(action=action, deadline=deadline):
+                    reservation = Reservation.objects.create(
+                        user=self.user, resource=self.approval_resource,
+                        starts_at=now if deadline == 'start' else now + timedelta(days=1),
+                        ends_at=now + timedelta(days=1, hours=1),
+                        status='PENDING_APPROVAL',
+                        approval_requested_at=now - timedelta(hours=24 if deadline == 'timeout' else 1),
+                    )
+                    with patch('reservations.views.timezone.now', return_value=now):
+                        if action == 'command':
+                            call_command('expire_reservations')
+                        elif action == 'approve':
+                            self.assertEqual(self.decide(reservation.pk, 'approve').status_code, 409)
+                        else:
+                            self.client.force_login(self.user)
+                            self.assertEqual(self.client.post(
+                                f'/api/reservations/{reservation.pk}/cancel/').status_code, 409)
+                    reservation.refresh_from_db()
+                    self.assertEqual(reservation.status, 'EXPIRED')
+
+    def test_approve_then_cancel_and_cancel_then_approve(self):
+        first = self.create(resource=self.approval_resource).json()['id']
+        self.client.post(f'/api/reservations/{first}/confirm/')
+        self.assertEqual(self.decide(first, 'approve').status_code, 200)
+        self.client.force_login(self.user)
+        self.assertEqual(self.client.post(f'/api/reservations/{first}/cancel/').status_code, 200)
+        second = self.create(resource=self.approval_resource).json()['id']
+        self.client.post(f'/api/reservations/{second}/confirm/')
+        self.assertEqual(self.client.post(f'/api/reservations/{second}/cancel/').status_code, 200)
+        self.assertEqual(self.decide(second, 'approve').status_code, 409)
+
+    def test_admin_cannot_bypass_reservation_lifecycle(self):
+        from django.contrib import admin
+        from django.test import RequestFactory
+        reservation = Reservation.objects.get(pk=self.create().json()['id'])
+        request = RequestFactory().get('/admin/')
+        request.user = self.staff
+        model_admin = admin.site._registry[Reservation]
+        self.assertFalse(model_admin.has_add_permission(request))
+        self.assertFalse(model_admin.has_delete_permission(request, reservation))
+        for field in ('status', 'resource', 'user', 'starts_at', 'ends_at'):
+            self.assertIn(field, model_admin.get_readonly_fields(request, reservation))

@@ -1,12 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="510" viewBox="0 0 1100 510" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1250" height="510" viewBox="0 0 1250 510" role="img" aria-labelledby="title desc">
   <title id="title">Reservation state diagram v0.2</title>
   <desc id="desc">Draft reservations may confirm directly or await approval. Pending approval can be confirmed, rejected, expired or cancelled. Draft and confirmed reservations may be cancelled before start.</desc>
+  <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#53657d"/></marker></defs>
   <style>
     text { font: 16px Arial, sans-serif; fill: #172033; }
     .label { font-size: 14px; fill: #394b63; }
     .state { fill: #f7f9fc; stroke: #315d8a; stroke-width: 2; }
     .final { fill: #172033; }
-    .line { fill: none; stroke: #53657d; stroke-width: 2; }
+    .line { marker-end: url(#arrow); fill: none; stroke: #53657d; stroke-width: 2; }
   </style>
   <circle class="final" cx="42" cy="248" r="9"/>
   <rect class="state" x="100" y="220" width="150" height="56" rx="18"/>
@@ -27,21 +28,21 @@
   <path class="line" d="M51 248h49"/>
   <text class="label" x="71" y="235">create</text>
   <path class="line" d="M250 230 375 112"/>
-  <text class="label" x="270" y="157">confirm; no approval</text>
+  <text class="label" x="270" y="157">confirm; no approval; valid/free</text>
   <path class="line" d="M250 248h125"/>
-  <text class="label" x="267" y="238">confirm; approval required</text>
-  <path class="line" d="M250 265 375 328"/>
-  <text class="label" x="270" y="307">cancel before start</text>
-  <path class="line" d="M565 104h195"/>
-  <text class="label" x="605" y="94">cancel before start</text>
+  <text class="label" x="255" y="205">confirm; approval required; valid/free</text>
+  <path class="line" d="M175 276V410H835V356"/>
+  <text class="label" x="390" y="403">cancel before start</text>
+  <path class="line" d="M565 104H965V328H910"/>
+  <text class="label" x="775" y="50">cancel before start</text>
   <path class="line" d="M595 220 760 96"/>
-  <text class="label" x="610" y="145">staff rejects</text>
+  <text class="label" x="610" y="145">staff rejects; before deadline</text>
   <path class="line" d="M595 238h165"/>
   <text class="label" x="615" y="228">24 h or start time</text>
   <path class="line" d="M595 258 760 328"/>
-  <text class="label" x="610" y="303">owner cancels before start</text>
+  <text class="label" x="610" y="303">owner cancels; before deadline/start</text>
   <path class="line" d="M485 220V134"/>
-  <text class="label" x="493" y="178">staff approves; valid and free</text>
+  <text class="label" x="493" y="178">staff approves; before deadline; valid/free</text>
   <path class="line" d="M910 96h105l20 96"/>
   <path class="line" d="M910 212h105"/>
   <path class="line" d="M910 328h105l20-96"/>

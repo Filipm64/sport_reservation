@@ -1,3 +1,5 @@
+> Historický duplikát C01. Aktuální evidence je v [evidence-and-evolution.md](evidence-and-evolution.md). Tento soubor není evidence současné baseline.
+
 # C01 Engineering Spike
 
 ## Question / unknown:
