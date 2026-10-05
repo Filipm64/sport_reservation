@@ -7,6 +7,8 @@ zrušení a schvalování vybraných sportovišť.
 - [Kontrola splnění zadání a zbývající týmové úkoly](docs/c02-audit.md)
 - [Revize požadavků a vazby na testy](docs/requirements-review.md)
 - [Architektonické drivery pro C03](docs/architecture-drivers.md)
+- [Doménový třídní model pro C03](docs/domain-model.md)
+- [Odpovědnosti systému pro C03](docs/system-responsibilities.md)
 - [Evidence běhu a změn](docs/evidence-and-evolution.md)
 
 ## Spuštění z kořene projektu
