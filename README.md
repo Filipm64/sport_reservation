@@ -17,6 +17,8 @@ zrušení a schvalování vybraných sportovišť.
 - [Návrhový třídní diagram — H2](docs/design-classes.md)
 - [Cross-view kontrola — I](docs/cross-view-check.md)
 - [AS-IS → TO-BE delta — J](docs/as-is-to-be-delta.md)
+- [Ověření chování — L1](docs/behavior-verification.md)
+- [Ověření architektonického pravidla — L2](docs/architecture-rule-verification.md)
 - [Evidence běhu a změn](docs/evidence-and-evolution.md)
 
 ## Spuštění z kořene projektu

@@ -174,3 +174,102 @@ Jeho hash lze získat pomocí:
 ```sh
 git log -1 --format=%H --grep='^Implement C03 reservation architecture and document decisions$'
 ```
+
+## L1 — Opakované ověření chování
+
+Dne 12. 10. 2026 byly na commitu `762af3d` znovu spuštěny relevantní
+příklady C02 pro změněné části: 19 API testů, 6 souběžných scénářů a
+4 testy selhání/validace. **Všech 29 testů prošlo bez přeskočení.**
+Tabulka výsledků, konkrétní testy a reprodukovatelný příkaz jsou v
+[ověření chování L1](behavior-verification.md). Aplikační kód se neměnil.
+
+## L2 — Opakovatelná kontrola architektonického pravidla
+
+Dne 12. 10. 2026 byla doplněna a spuštěna samostatná AST kontrola,
+že HTTP vstupy a expirační command nepoužívají ORM ani nepřepisují stav
+rezervace. **1 test prošel**; také odmítl sedm ukázkových porušení.
+Pravidlo, reprodukovatelný příkaz a skutečný log jsou v
+[ověření L2](architecture-rule-verification.md). Aplikační chování se neměnilo.
+
+## C03 — Architecture Evidence
+
+**Baseline:** [v0.2](baseline-v0.2.md). Aktuální
+[zápis schválení](baseline-approval.md) uvádí přijetí v0.1 dne 4. 10. 2026
+a v0.2 dne 5. 10. 2026. Starší poznámky o nedoloženém schválení výše
+zachycují stav při dřívější revizi.
+
+**Part A:** Prohlídka výchozího kódu na commitu `acd7890`:
+views kombinovaly HTTP, pravidla a ORM; Confirm/Approve opakovaly rozhodování;
+expirační command měnil stav přímo a importoval pravidlo z views.
+Nálezy jsou zachycené v [AS-IS → TO-BE delta](as-is-to-be-delta.md);
+samostatný dokument Part A není v repozitáři.
+
+**Drivers:** [AD-01 až AD-05](architecture-drivers.md): exkluzivita při
+souběhu, konzistentní přechody, trvalé čekající schvalování, oprávnění
+na všech vstupech a jednotné časové hranice.
+
+**Decision question:** Má potvrzování a schvalování rezervací řídit
+společná část rezervační aplikace, nebo samostatná služba?
+
+**Alternatives:** A — společné rozhodování uvnitř aplikace;
+B — samostatná služba vlastnící rozhodování a stav.
+[Struktury a porovnání](architecture-decision.md).
+
+**Scenario walkthrough:** Dvě čekající žádosti o stejné sportoviště
+a interval jsou schválené současně. První uspěje, druhá dostane konflikt
+a zůstane PENDING_APPROVAL.
+[Průchod oběma variantami](architecture-decision.md#průchod-scénářem--dvě-současná-schválení).
+
+**ADR:** [ADR-01](architecture-decision.md#adr-01--má-potvrzování-a-schvalování-rezervací-řídit-společná-část-aplikace-nebo-samostatná-služba)
+volí A. Samostatná služba není požadovaná a sama neřeší souběh;
+přidávala by další komunikaci, ověřování identity a možnosti selhání.
+
+**Views:**
+
+- Domain class: [doménový model](domain-model.md).
+- Context: [G1](system-context.md).
+- Static architecture: [G2](static-architecture.md).
+- State ownership: [G3](statechart-ownership.md).
+- Runtime/deployment: [G4](runtime-deployment.md).
+- Design sequence: [H1](design-sequence.md).
+- Focused design class: [H2](design-classes.md).
+
+**Cross-view issues found/resolved:** Odděleno načtení rezervace a kolizí;
+H1 výslovně ukazuje změnu doménového objektu před uložením. H2 doplňuje
+společné rozhodování Confirm/Approve; G2/G4 upřesňují oddělený kontext
+každého požadavku a ochranu mezi procesy. [Kontrola sedmi vazeb](cross-view-check.md).
+
+**AS-IS → TO-BE delta:** [Tabulka J](as-is-to-be-delta.md).
+Osm CHANGE provedeno, tři KEEP zachovány, obě VERIFY ověřeny testy.
+
+**Implementation changes:** `ReservationService` vlastní přechody a
+kontrolu alokace; `TimeRules` čas, `IdentityAccess` oprávnění,
+`DataStore`/`DjangoDataStore` ukládání. HTTP i expirační command delegují
+na společné části. Doménové entity a hodnoty jsou oddělené od ORM.
+Schéma, migrace a cesty API se zachovaly; podrobná mapa souborů je v H2.
+
+**Behaviour verification:** [L1](behavior-verification.md): 29 relevantních
+testů znovu prošlo na commitu `762af3d`. Závěrečný běh po doplnění L2:
+**37 testů prošlo, žádný přeskočený**; Django check bez problému,
+žádné změny migrací. [Skutečný log](evidence/c03-final-verification.log).
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 SPORT_BOOKING_TEST_DB=/tmp/sport-booking-c03-final.sqlite3 .venv/bin/python sport_booking/manage.py test reservations --noinput
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python sport_booking/manage.py check
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python sport_booking/manage.py makemigrations --check --dry-run
+```
+
+**Architecture conformance rule + result:** Vstupy nesmějí přímo používat
+ORM ani měnit lifecycle stav. [AST kontrola L2](architecture-rule-verification.md)
+prošla nad třemi vstupními soubory a odmítla sedm ukázkových porušení;
+je součástí závěrečné sady 37 testů.
+
+**Remaining uncertainty / risk:** Automatický plánovač expirace není
+nastavený; expirační command se zatím spouští ručně. SQLite serializuje
+zápisy celé databáze. Zatížení, SLA a politika retry při timeoutu nejsou
+stanovené. Změna databáze vyžaduje nové ověření souběhu. Statická kontrola
+L2 se vztahuje na uvedené vstupní soubory a přímé přístupy.
+
+**Commit/tag:** Implementace a diagramy: `762af3d`.
+Závěrečná evidence, L1/L2 a nový kontrolní test jsou připravené k ručnímu
+commitu týmem. Výsledný hash doplnit po jeho vytvoření.

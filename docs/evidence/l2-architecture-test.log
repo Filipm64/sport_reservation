@@ -1,0 +1,9 @@
+test_entry_points_do_not_access_orm_or_mutate_reservation_state (reservations.test_architecture.ArchitectureDependencyTests.test_entry_points_do_not_access_orm_or_mutate_reservation_state) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.002s
+
+OK
+Found 1 test(s).
+Skipping setup of unused database(s): default.
+System check identified no issues (0 silenced).
