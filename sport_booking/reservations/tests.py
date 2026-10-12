@@ -315,7 +315,7 @@ class ReservationApiTests(TestCase):
 
     def test_exact_time_limits_and_exceeded_limits(self):
         now = timezone.now()
-        with patch('reservations.views.timezone.now', return_value=now):
+        with patch('reservations.rules.TimeRules.now', return_value=now):
             for offset, duration, expected in (
                 (timedelta(0), timedelta(hours=2), 201),
                 (timedelta(days=30), timedelta(hours=2), 201),
@@ -376,7 +376,7 @@ class ReservationApiTests(TestCase):
     def test_cancel_at_exact_start_is_rejected(self):
         reservation_id = self.create().json()['id']
         reservation = Reservation.objects.get(pk=reservation_id)
-        with patch('reservations.views.timezone.now', return_value=reservation.starts_at):
+        with patch('reservations.rules.TimeRules.now', return_value=reservation.starts_at):
             response = self.client.post(f'/api/reservations/{reservation_id}/cancel/')
         self.assertEqual(response.status_code, 409)
         reservation.refresh_from_db()
@@ -394,7 +394,7 @@ class ReservationApiTests(TestCase):
                         status='PENDING_APPROVAL',
                         approval_requested_at=now - timedelta(hours=24 if deadline == 'timeout' else 1),
                     )
-                    with patch('reservations.views.timezone.now', return_value=now):
+                    with patch('reservations.rules.TimeRules.now', return_value=now):
                         if action == 'command':
                             call_command('expire_reservations')
                         elif action == 'approve':

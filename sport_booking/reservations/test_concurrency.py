@@ -1,5 +1,9 @@
 """Use SPORT_BOOKING_TEST_DB with a disposable SQLite file for real connections."""
 import json
+import subprocess
+import sys
+from pathlib import Path
+from types import SimpleNamespace
 from concurrent.futures import ThreadPoolExecutor
 from datetime import time, timedelta
 from threading import Barrier
@@ -103,3 +107,43 @@ class ReservationConcurrencyTests(TransactionTestCase):
         self.assertIn(results[0], (200, 409))
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, 'CANCELLED')
+
+
+    def test_expiration_process_racing_approval_uses_shared_database(self):
+        reservation = self.reservation(pending=True)
+        Reservation.objects.filter(pk=reservation.pk).update(
+            approval_requested_at=timezone.now() - timedelta(hours=24),
+        )
+        script = """
+import os, sys
+os.environ['DJANGO_SETTINGS_MODULE'] = 'sport_booking.settings'
+from django.conf import settings
+settings.DATABASES['default']['NAME'] = sys.argv[1]
+import django
+django.setup()
+from django.core.management import call_command
+print('READY', flush=True)
+sys.stdin.readline()
+call_command('expire_reservations')
+"""
+        with subprocess.Popen(
+            [sys.executable, '-c', script, str(connection.settings_dict['NAME'])],
+            cwd=Path(__file__).resolve().parent.parent,
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True,
+        ) as process:
+            self.assertEqual(process.stdout.readline().strip(), 'READY')
+
+            def expire_from_other_process(request, reservation_id):
+                output, errors = process.communicate('start\n', timeout=20)
+                self.assertEqual(process.returncode, 0, errors)
+                self.assertIn('Expired', output)
+                return SimpleNamespace(status_code=200)
+
+            results = self.race(
+                (views.approve_reservation, reservation.pk, self.staff),
+                (expire_from_other_process, reservation.pk, self.staff),
+            )
+        self.assertEqual(results, [409, 200])
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, 'EXPIRED')

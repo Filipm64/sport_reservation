@@ -1,4 +1,4 @@
-# Rezervační systém sportovišť — C02
+# Rezervační systém sportovišť — C02/C03
 
 Django aplikace pro vytvoření žádosti, kontrolu dostupnosti, potvrzení,
 zrušení a schvalování vybraných sportovišť.
@@ -9,6 +9,14 @@ zrušení a schvalování vybraných sportovišť.
 - [Architektonické drivery pro C03](docs/architecture-drivers.md)
 - [Doménový třídní model pro C03](docs/domain-model.md)
 - [Odpovědnosti systému pro C03](docs/system-responsibilities.md)
+- [Kontext systému — G1](docs/system-context.md)
+- [TO-BE statická architektura — G2](docs/static-architecture.md)
+- [Vlastnictví přechodů ve statechartu — G3](docs/statechart-ownership.md)
+- [Runtime a deployment mapping — G4](docs/runtime-deployment.md)
+- [Návrhový sekvenční diagram — H1](docs/design-sequence.md)
+- [Návrhový třídní diagram — H2](docs/design-classes.md)
+- [Cross-view kontrola — I](docs/cross-view-check.md)
+- [AS-IS → TO-BE delta — J](docs/as-is-to-be-delta.md)
 - [Evidence běhu a změn](docs/evidence-and-evolution.md)
 
 ## Spuštění z kořene projektu
@@ -79,7 +87,7 @@ console.log(await post(`/api/reservations/${id}/cancel/`)); // opakování → 4
 .venv/bin/python sport_booking/manage.py makemigrations --check --dry-run
 ```
 
-Výchozí paměťová SQLite přeskočí pět testů souběhu. Pro **úplné ověření**
+Výchozí paměťová SQLite přeskočí šest testů souběhu. Pro **úplné ověření**
 použijte vyhrazený dočasný soubor testovací DB (test runner ho vytváří
 a odstraňuje; nepoužívejte cestu k aplikační databázi):
 
@@ -87,9 +95,9 @@ a odstraňuje; nepoužívejte cestu k aplikační databázi):
 SPORT_BOOKING_TEST_DB=/tmp/sport-booking-c02-tests.sqlite3 .venv/bin/python sport_booking/manage.py test reservations
 ```
 
-Při revizi prošlo všech 30 testů včetně souběhu. Testy přes Django client
+Při ověření C03 prošlo všech 36 testů včetně souběhu a rollbacku při chybách. Testy přes Django client
 předvádějí úspěšný i negativní/hraniční příklad každé operace. Pět testů
-souběhu používá nezávislá spojení nad souborovou databází.
+souběhu používá nezávislá spojení; šestý ověřuje expiraci v samostatném procesu.
 
 ## Expirace a C03
 
@@ -107,3 +115,12 @@ musí zachovat stejný business výsledek.
 
 `POST /api/reservations/ → validace → persist → ID → automated check`.
 C01 rámec a spike se znovu nevytvářejí; C03 doplní obhajitelnou architekturu.
+
+## Realizace C03
+
+HTTP vstupy jsou v `reservations/api.py`; společné rozhodování vlastní
+`ReservationService` v `services.py`. `rules.py` a `domain.py` obsahují
+časová pravidla a doménové objekty, `identity.py` oprávnění a `persistence.py`
+rozhraní ukládání s Django adaptérem. `wiring.py` propojuje tyto části.
+Expirační command volá stejnou službu. Databázové schéma a cesty API zůstaly
+zachované. Evidence C03 uvádí testy, kontrolu závislostí a commit implementace.

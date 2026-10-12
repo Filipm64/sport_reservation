@@ -56,7 +56,7 @@ Tabulka popisuje důsledky návrhu, nikoliv již implementované změny.
 Obě varianty mohou splnit pravidla baseline. A má méně provozních prvků;
 B umožňuje samostatné nasazení rozhodování, ale přidává komunikaci,
 ověřování mezi aplikací a službou a další možnosti selhání.
-Žádná varianta zatím není vybraná.
+Výběr varianty po průchodu scénářem je zaznamenán v ADR-01 níže.
 
 ## Průchod scénářem — dvě současná schválení
 
@@ -84,3 +84,49 @@ u B ji musí zajistit služba pro všechny své instance.
 Jde o průchod návrhem. Souběh schválení v současné aplikaci ověřuje test
 `test_conflicting_approvals_commit_only_one_allocation`; samostatná služba
 varianty B zatím není implementovaná ani otestovaná.
+
+## ADR-01 — Má potvrzování a schvalování rezervací řídit společná část aplikace, nebo samostatná služba?
+
+**Kontext:** Confirm i Approve mohou potvrdit rezervaci stejného
+sportoviště. Při souběhu musí uspět nejvýše jedna z kolidujících žádostí.
+Aplikace také musí zachovat čekající žádosti, správně je rušit a neumožnit
+schválení po vypršení.
+
+**Drivery:** AD-01 (dvojí rezervace), AD-02 (změny stavu), AD-03
+(čekající schvalování), AD-04 (oprávnění), AD-05 (časové hranice).
+
+**Alternativa A:** Společná část rezervační aplikace kontroluje pravidla,
+rozhoduje a ukládá stav. Nasazuje se spolu se zbytkem aplikace.
+
+**Alternativa B:** Samostatná rezervační služba rozhoduje a mění stav.
+Aplikace jí předává všechny požadavky na změnu rezervací.
+
+**Rozhodnutí:** Volíme **alternativu A**. Confirm a Approve budou používat
+společné rozhodování uvnitř aplikace. Cancel a expirace budou respektovat
+stejná pravidla přechodů. Kontrola kolize a uložení CONFIRMED musí být
+chráněné proti souběhu jako jeden celek.
+
+**Důvod:** Průchod dvěma současnými schváleními ukázal, že samostatná
+služba nezaručuje exkluzivitu sama o sobě. A umožňuje zachovat BR-02
+s menším počtem provozních prvků a bez dalšího předávání identity a výsledků
+mezi aplikací a službou. Současné požadavky nevyžadují samostatné nasazení
+rozhodování. Čekající stav může zůstat uložený v databázi aplikace.
+
+**Přijaté negativní důsledky:**
+
+- Změny rezervačních pravidel se nasazují spolu s aplikací; tuto část nelze
+  samostatně nasazovat ani škálovat.
+- Výpadek aplikace přeruší i potvrzování a schvalování.
+- Současná SQLite ochrana serializuje zápisy i pro různá sportoviště.
+- Expirace stále potřebuje plánované spouštění; při ztracené odpovědi je
+  nutné ověřit uložený výsledek. Volba A tyto úkoly neodstraňuje.
+
+**Rozhodnutí znovu otevřeme, když:**
+
+- vznikne požadavek na nezávislé nasazení nebo dostupnost rezervační části;
+- měření ukáže, že čekání na zápisy nesplňuje odsouhlasené požadavky na výkon;
+- více aplikací bude potřebovat společné rozhodování o stejných sportovištích.
+
+Rozhodnutí je nyní realizované společnou ReservationService a ověřené
+API i souběžnými testy; podrobnosti jsou v evidenci C03.
+Automatické plánované spouštění expirace zatím není nakonfigurované.

@@ -111,3 +111,66 @@ jsou pracovní změny nad tímto commitem; pro reprodukci je zatím potřeba
 celý pracovní strom. Commit ani tag oprav nebyl vytvořen. Při odevzdání tým
 uloží opravy do Gitu a doplní skutečný výsledný commit/tag; výchozí hash
 nesmí být vydáván za identifikátor opravené aplikace.
+
+## Evidence C03: návrh → realizace a ověření
+
+**Datum:** 12. 10. 2026. Výchozí stav: `acd7890` (`cv3 A - E3`).
+Přijata varianta A z ADR-01, návrh G1–G4/H1–H2 a cross-view kontrola.
+Historický popis pracovního stavu C02 výše patří k tehdejší revizi;
+opravovaný kód C02 byl následně uložen v historii projektu.
+
+**Realizované změny:**
+
+- Vstupní rozhraní: `api.py` a tenké `views.py`, bez přímého ORM.
+- Správa rezervací a čtecí dostupnost: `services.py`; Confirm a Approve
+  sdílejí `_decide_confirmation()`. Expirace volá stejnou službu.
+- Identita a oprávnění: `identity.py`; časová pravidla: `rules.py`.
+- Doménové hodnoty a přechody: `domain.py`, bez závislosti na Django ORM/HTTP.
+- Ukládání: port `DataStore` a adaptér `DjangoDataStore` v `persistence.py`.
+  Každá operace má vlastní kontext; IMMEDIATE chrání rozhodující čtení
+  a zápis. Při neúspěchu se změny vracejí zpět.
+- `wiring.py` sestavuje části; databázové schéma, migrace, cesty API
+  a omezení rezervačního adminu zůstaly zachované.
+
+**Nálezy kontroly kódu:** odstraněno opakované rozhodování ve views,
+import pravidel z views do commandu a přímé změny stavu z těchto vstupů.
+Dále opravena validace `resource_id`: boolean, desetinné číslo a hodnota
+mimo rozsah identifikátoru jsou odmítnuté jako neplatný vstup.
+Chyba ukládání se nevrací jako úspěšné potvrzení.
+
+**Skutečně provedené ověření:**
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 SPORT_BOOKING_TEST_DB=/tmp/sport-booking-c03-implementation.sqlite3 .venv/bin/python sport_booking/manage.py test reservations --noinput
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python sport_booking/manage.py check
+PYTHONDONTWRITEBYTECODE=1 .venv/bin/python sport_booking/manage.py makemigrations --check --dry-run
+```
+
+**Výsledek: 36 testů prošlo, žádný nebyl přeskočen.** Django system check
+bez problému; žádné změny migrací. Ověřeno celé dosavadní API chování,
+pět souběhů mezi nezávislými spojeními a navíc:
+
+- expirační management command v samostatném Python procesu závodící se
+  schválením nad stejným SQLite souborem; konečný stav EXPIRED;
+- rollback při simulované chybě po zápisu i před dokončením transakce;
+- opakovaná expirace je bezpečná, konečné stavy nemění;
+- neplatné identifikátory nevytvářejí rezervaci;
+- AST kontrola povolených závislostí: žádné ORM/HTTP ve společném business
+  rozhodování, žádná závislost služby na konkrétním Django adaptéru,
+  expirační vstup neimportuje views/modely.
+
+Testy simulovaných chyb ověřují rollback při zachovaném databázovém spojení;
+nejde o test fyzického výpadku disku nebo ztráty spojení během commit.
+
+**Omezení:** automatický plánovač expirace zůstává nenakonfigurovaný;
+SQLite serializuje zápisy celé databáze. Týmové schválení specifikace
+zůstává samostatným týmovým úkolem. Změna databáze vyžaduje nové ověření
+souběžných záruk; záruky zde byly ověřené pro SQLite.
+
+**Commit implementace:** záznam, diagramy a kód jsou součástí commitu
+`Implement C03 reservation architecture and document decisions`.
+Jeho hash lze získat pomocí:
+
+```sh
+git log -1 --format=%H --grep='^Implement C03 reservation architecture and document decisions$'
+```
