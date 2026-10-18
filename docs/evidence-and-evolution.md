@@ -307,4 +307,3 @@ Remaining design risk:
 Commit/tag:
 - Ověření proběhlo na aktuálním pracovním stromu; nejednalo se o vytvoření nové produkční verze ani release.
 - Tento designový úkol je založen na existující implementaci v repozitáři a dokumentuje návrh/ověření na aktuálním kódu, nikoli na novém release artefaktu.
-- Pro tento designový úkol nebyl vytvořen žádný release tag; pokud tým chce evidovat oficiální release, musí být tag vytvořen explicitně po schválení a commitu.
