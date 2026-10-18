@@ -273,3 +273,38 @@ L2 se vztahuje na uvedené vstupní soubory a přímé přístupy.
 **Commit/tag:** Implementace a diagramy: `762af3d`.
 Závěrečná evidence, L1/L2 a nový kontrolní test jsou připravené k ručnímu
 commitu týmem. Výsledný hash doplnit po jeho vytvoření.
+
+## C05 DD Verification Evidence
+
+Tests derived from DD:
+- Schválení je časově omezeno podle pravidla `min(requested_at + 24h, reservation.interval.start)`.
+- Expirování platí pouze pro stav `PENDING_APPROVAL`.
+- Při konfliktu a při přepnutí do `CONFIRMED` musí zůstat stav v konzistentním a atomickém cyklu.
+- Authorization a ownership jsou důležité pro confirm/cancel/approve.
+
+Unit/component tests executed:
+- `Reservation lifecycle` unit tests v doméně a službě pro expiraci a deadline schválení.
+- `test_new_conflict_prevents_approval_and_leaves_request_pending` – komponentní test pro konflikt při schválení.
+- `test_expired_approval_cannot_be_approved` – komponentní test pro expirovanou žádost.
+- `test_staff_can_reject_but_non_staff_cannot_decide` – komponentní test pro oprávnění.
+- `test_failed_save_rolls_back_and_never_reports_success` – integrace/rollback test.
+- Sada Django testů `reservations`: `Ran 37 tests in 0.482s`, výsledek `OK (skipped=6)`.
+
+Design ↔ implementation mismatch:
+- Neshoda nenalezena.
+- Doménové přechody ve `Reservation` odpovídají správnímu životnímu cyklu v kódu.
+- `TimeRules.is_expired` odpovídá pravidlu deadlinu a chování v službě i v testech.
+- `ReservationService.approve` ověřuje conflict a vybírá správný přechod stavu v jednom transakčním kroku.
+
+Resolution:
+- Rozhodnutí z DD bylo ponecháno v doméně a službě, aniž by se měnila implementace; dokumentace byla doplněna tak, aby předávala návrhový záměr explicitně.
+- Rozsah DD je omezen na jednu architektonickou odpovědnost s reálnou obchodní logikou, nikoliv na celý systém.
+
+Remaining design risk:
+- SQLite serializuje zápisy celé databáze; návrhový záměr je správný pro SQLite, ale není automaticky přenosný na vícenásobné instance nebo horizontální škálování.
+- Expiraci stále musí řešit serverový čas a plánovaný nebo ruční spouštěč; tento provozní detail je mimo doménový kontrakt.
+
+Commit/tag:
+- Ověření proběhlo na aktuálním pracovním stromu; nejednalo se o vytvoření nové produkční verze ani release.
+- Tento designový úkol je založen na existující implementaci v repozitáři a dokumentuje návrh/ověření na aktuálním kódu, nikoli na novém release artefaktu.
+- Pro tento designový úkol nebyl vytvořen žádný release tag; pokud tým chce evidovat oficiální release, musí být tag vytvořen explicitně po schválení a commitu.
