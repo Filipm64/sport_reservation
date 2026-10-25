@@ -20,6 +20,7 @@ zrušení a schvalování vybraných sportovišť.
 - [Ověření chování — L1](docs/behavior-verification.md)
 - [Ověření architektonického pravidla — L2](docs/architecture-rule-verification.md)
 - [Evidence běhu a změn](docs/evidence-and-evolution.md)
+- [Prezentace projektu a reakce na C06](docs/presentation-c06.html) — otevřít v prohlížeči; navigace šipkami nebo mezerníkem
 
 ## Spuštění z kořene projektu
 

@@ -29,9 +29,10 @@ neduplikuje vlastním modelem.
 
 **Přijatá baseline:** Aktuální technický návrh je
 [baseline v0.2](baseline-v0.2.md), předchozí je
-[baseline v0.1](baseline-v0.1.md). Formální přijetí týmem není doloženo
-pro žádnou verzi. Původní tvrzení o schválení zadavatelem nelze z dostupných
-podkladů ověřit, proto už není prezentováno jako doložený fakt.
+[baseline v0.1](baseline-v0.1.md). [Zápis týmu](baseline-approval.md)
+uvádí přijetí v0.1 dne 4. 10. a v0.2 dne 5. 10. 2026 a jména členů týmu.
+Schválené verze dokumentů jsou v zápisu propojené s revizemi `2c3c00c`
+a `bfd2ff2`.
 
 **Předvedené základní operace:** Create, Check Availability, Confirm,
 Cancel a nová Approve prostřednictvím Django JSON API. Základní scénáře
@@ -93,9 +94,8 @@ Není to zátěžový test ani test přes reálnou HTTP síť.
 schválení a rušení čekajících žádostí. Create, polouzavřené intervaly,
 exkluzivita, limity a neblokující charakter dostupnosti zůstávají stejné.
 
-**Zbývající předpoklad / neznámá:** Tým musí doložit přijetí politik a
-baseline. Historické pořadí odsouhlasení v0.1, analýzy dopadu a implementace
-v0.2 není tímto novým ověřením prokázané. Není zvolen scheduler ani jeho
+**Zbývající předpoklad / neznámá:** Historické pořadí odsouhlasení v0.1,
+analýzy dopadu a implementace v0.2 není tímto novým ověřením prokázané. Není zvolen scheduler ani jeho
 maximální zpoždění; notifikace a SLA nejsou specifikovány. SQLite serializuje
 zápisy celé DB; při vyčerpání timeoutu není určena uživatelská politika retry.
 
@@ -277,27 +277,37 @@ commitu týmem. Výsledný hash doplnit po jeho vytvoření.
 ## C05 DD Verification Evidence
 
 Tests derived from DD:
-- Schválení je časově omezeno podle pravidla `min(requested_at + 24h, reservation.interval.start)`.
-- Expirování platí pouze pro stav `PENDING_APPROVAL`.
-- Při konfliktu a při přepnutí do `CONFIRMED` musí zůstat stav v konzistentním a atomickém cyklu.
-- Authorization a ownership jsou důležité pro confirm/cancel/approve.
+
+| Element DD | Test | Ověřený výsledek |
+| --- | --- | --- |
+| `TimeRules.is_expired` a deadline `min(requested_at + 24h, start)` | `test_expiry_exact_deadline_on_approve_cancel_and_command` | Na obou přesných hranicích vznikne `EXPIRED`; jedna minuta před hranicí zůstává žádost platná. |
+| Stavový guard před rozhodnutím | `test_approve_draft_reservation_returns_conflict`; `test_expired_approval_cannot_be_approved` | Nepending žádost se nemění; expirovaná se uloží jako `EXPIRED` a vrátí 409. |
+| Kontrola alokace při schválení | `test_new_conflict_prevents_approval_and_leaves_request_pending` | Nová kolize vrátí 409 a žádost zůstává `PENDING_APPROVAL`. |
+| Validace před přechodem do `PENDING_APPROVAL` | `test_confirm_rejects_invalid_interval_for_approval_resource`; `test_confirm_rejects_conflict_for_approval_resource` | Neplatný interval i kolize vrátí 409 a záznam zůstane `DRAFT`. |
+| Oprávnění správce | `test_staff_can_reject_but_non_staff_cannot_decide` | Běžný uživatel dostane 403; správce může zamítnout. |
+| Neplatné rozhodnutí na vrstvě služby | `test_service_rejects_invalid_approval_decision` | Služba vyhodí `invalid_input`; stav zůstává `PENDING_APPROVAL`. |
+| Atomicita při chybě zápisu | `test_failed_save_rolls_back_and_never_reports_success` | Neúspěšný zápis nehlásí úspěch a změna se vrátí zpět. |
+
+Úroveň testu: deadline a stavové hranice procházejí přes API/komponentu,
+protože výsledek zahrnuje uložený stav i HTTP odpověď. Rollback test je
+integrační, protože ověřuje hranici služby a persistence adaptéru.
 
 Unit/component tests executed:
-- `Reservation lifecycle` unit tests v doméně a službě pro expiraci a deadline schválení.
 - `test_new_conflict_prevents_approval_and_leaves_request_pending` – komponentní test pro konflikt při schválení.
+- `test_confirm_rejects_invalid_interval_for_approval_resource` a `test_confirm_rejects_conflict_for_approval_resource` – regresní testy nálezu F1.
 - `test_expired_approval_cannot_be_approved` – komponentní test pro expirovanou žádost.
 - `test_staff_can_reject_but_non_staff_cannot_decide` – komponentní test pro oprávnění.
 - `test_failed_save_rolls_back_and_never_reports_success` – integrace/rollback test.
-- Sada Django testů `reservations`: `Ran 37 tests in 0.482s`, výsledek `OK (skipped=6)`.
+- Sada Django testů `reservations`: před změnou C06 měla 37 testů; po doplnění F1 jsou dva regresní testy navíc. Aktuální výsledek je zaznamenán v C06 níže.
 
 Design ↔ implementation mismatch:
-- Neshoda nenalezena.
+- Nalezen rozpor v kontraktu chyby approve: text tvrdil, že `EXPIRED` se neukládá, ale pseudokód, implementace i testy stav ukládají. Opraven popis kontraktu.
 - Doménové přechody ve `Reservation` odpovídají správnímu životnímu cyklu v kódu.
 - `TimeRules.is_expired` odpovídá pravidlu deadlinu a chování v službě i v testech.
 - `ReservationService.approve` ověřuje conflict a vybírá správný přechod stavu v jednom transakčním kroku.
 
 Resolution:
-- Rozhodnutí z DD bylo ponecháno v doméně a službě, aniž by se měnila implementace; dokumentace byla doplněna tak, aby předávala návrhový záměr explicitně.
+- Implementace zůstala beze změny; popis kontraktu nyní říká, že při dosaženém deadlinu služba uloží `EXPIRED`, commitne a poté vrátí chybu.
 - Rozsah DD je omezen na jednu architektonickou odpovědnost s reálnou obchodní logikou, nikoliv na celý systém.
 
 Remaining design risk:
@@ -307,3 +317,23 @@ Remaining design risk:
 Commit/tag:
 - Ověření proběhlo na aktuálním pracovním stromu; nejednalo se o vytvoření nové produkční verze ani release.
 - Tento designový úkol je založen na existující implementaci v repozitáři a dokumentuje návrh/ověření na aktuálním kódu, nikoli na novém release artefaktu.
+
+## C06 — Reakce na externí hodnocení
+
+Hodnocení posuzovalo čistý archiv `4bb9ebc` z 21. 10. 2026. Nálezy F1–F3
+jsou přijaty; žádný z nich neukázal chybu rozhodovací logiky v aplikaci.
+Odhalily chybějící testy a zastaralé či rozporné návrhové záznamy.
+
+| Nález | Dispozice | Oprava / důkaz |
+| --- | --- | --- |
+| B1 — baseline a identifikace evidence | Částečně přijato při hodnocení; evidence doplněna | Hodnocený stav: `4bb9ebc`. Odkazy na výsledky cvičení: C02 `bfd2ff2`, C03 `762af3d`, C05 `3e05867`. Zápis schválení nyní uvádí členy týmu a schválené revize baseline v0.1 `2c3c00c` a v0.2 `bfd2ff2`. |
+| F1 — Confirm u Resource se schvalováním | Přijato | Přidány regresní testy neplatného intervalu a existující kolize. Oba očekávají 409 a zachování `DRAFT`. Implementace již před testem kontroly prováděla. |
+| F2 — chování při expiraci v C05 DD | Přijato | Kontrakt nyní odpovídá kódu a pseudokódu: `EXPIRED` se uloží a commitne, následně se vrátí chyba. |
+| F3 — deadline v H1/H2 | Přijato | H1/H2 nyní rozlišují `is_expired()` od validace intervalu a ukazují odpovědnost služby za přechod, uložení a odmítnutí po expiraci. |
+| D3 — dohledatelnost odvození testů | Přijato | Doplněna mapa prvků DD na konkrétní testy a zdůvodnění integrační úrovně rollback testu i komponentní úrovně testů deadline. |
+| D4 — nepokryté větve approve | Přijato | Přidány testy pro nedostupný Resource, chybějící čas žádosti, neplatné rozhodnutí na API i ve službě a neznámou rezervaci. |
+
+Finální ověření po změnách C06: **45 testů prošlo, žádný nebyl přeskočen**
+při použití samostatné souborové SQLite DB. Django system check bez problémů;
+kontrola migrací nevyžaduje změny. Testy neprokazují chování na jiné databázi
+než SQLite a nejsou zátěžovým testem.

@@ -23,7 +23,9 @@ classDiagram
     }
     class TimeRules {
         +now()
+        +is_expired(reservation, now) bool
         +validate_approval(reservation, now)
+        +validate_interval(interval, now)
         +has_conflict(interval, confirmed_intervals) bool
     }
     class DataStore {
@@ -71,8 +73,8 @@ classDiagram
     ReservationService ..> DataStore : protected read and write
     ReservationService ..> Reservation : state transition
     TimeRules ..> TimeInterval : overlaps
-    TimeRules ..> ApprovalRequest : deadline
-    TimeRules ..> Reservation : validate_approval
+    TimeRules ..> ApprovalRequest : is_expired uses deadline
+    TimeRules ..> Reservation : is_expired / validate_approval
 
     User "1" -- "0..*" Reservation : owner
     Resource "1" -- "0..*" Reservation : reserved resource
@@ -87,7 +89,7 @@ classDiagram
 | Vstupní rozhraní | `ReservationEndpoint.approve()` — přijme požadavek a vrátí HTTP výsledek. |
 | Identita a oprávnění | `IdentityAccess.authenticate()` a `can_approve()` — ověří identitu a pravomoc správce. |
 | Správa rezervací | `ReservationService.approve()` — řídí celé rozhodnutí; kontroluje `Reservation.is_pending()` a `Resource.is_available`. Confirm i Approve sdílejí `_decide_confirmation()` pro kontrolu Resource a kolizí. Při úspěchu zavolá `Reservation.confirm()`. |
-| Časová pravidla | `TimeRules.now()`, `validate_approval()` a `has_conflict()` — používají `ApprovalRequest.deadline()` a `TimeInterval.overlaps()`. |
+| Časová pravidla | `TimeRules.now()`, `is_expired()`, `validate_approval()` a `has_conflict()` — `is_expired()` používá `ApprovalRequest.deadline()`; `validate_approval()` pouze deleguje na validaci intervalu. |
 | Ukládání dat | `DataStore.load_protected()`, `confirmed_intervals()`, `save()`, `commit()` a `rollback()` — chrání a ukládají výsledek rozhodnutí. |
 
 ## Důležité smlouvy

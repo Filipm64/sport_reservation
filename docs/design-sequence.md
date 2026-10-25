@@ -33,17 +33,22 @@ sequenceDiagram
     end
 
     loop Pro každý požadavek — v ukázce X, pak Y
-        R->>U: load_protected(id)<br/>ochrana před načtením
-        U-->>R: Rezervace a její Resource
-        R->>U: confirmed_intervals(resourceId)
-        U-->>R: Aktuální potvrzené intervaly
         R->>I: Smí aktér schvalovat?
         I-->>R: Ano
+        R->>U: load_protected(id)<br/>ochrana před načtením
+        U-->>R: Rezervace a její Resource
         R->>T: now()
         T-->>R: Aktuální serverový čas
-        R->>T: validate_approval()<br/>a has_conflict()
-        T-->>R: Platný čas<br/>a výsledek překryvu
+        R->>T: is_expired(reservation, now)
+        T-->>R: Deadline ještě neuplynul
         R->>R: Ověř čekající stav<br/>a _decide_confirmation()
+        R->>T: validate_approval(reservation, now)
+        T-->>R: Interval je platný
+        R->>R: Ověř dostupnost Resource
+        R->>U: confirmed_intervals(resourceId)
+        U-->>R: Aktuální potvrzené intervaly
+        R->>T: has_conflict(interval, confirmed_intervals)
+        T-->>R: Výsledek překryvu
 
         alt Bez kolize — X
             R->>R: Reservation.confirm()
@@ -58,6 +63,9 @@ sequenceDiagram
             V-->>SY: 409, konflikt
         end
     end
+
+    Note over R,T: Pokud is_expired() vrátí true, služba přejde na EXPIRED, uloží a commitne stav a vrátí 409.
+    Note over R,T: validate_approval() ověřuje pouze časový interval. Deadline kontroluje předtím is_expired(); kolize se zjišťuje až následně.
 ```
 
 **Rozhoduje Správa rezervací.** Ukládání dat chrání její kontrolu a zápis

@@ -9,7 +9,9 @@ from django.db.models.deletion import ProtectedError
 from django.test import TestCase
 from django.utils import timezone
 
+from .domain import ReservationError, User
 from .models import Reservation, Resource, Sport
+from .wiring import build_service
 
 
 class ReservationPersistenceTests(TestCase):
@@ -200,6 +202,48 @@ class ReservationApiTests(TestCase):
             Reservation.Status.DRAFT,
         )
 
+    def test_confirm_rejects_invalid_interval_for_approval_resource(self):
+        response = self.create(resource=self.approval_resource)
+        reservation_id = response.json()['id']
+        Reservation.objects.filter(pk=reservation_id).update(
+            starts_at=timezone.now() - timedelta(minutes=1),
+            ends_at=timezone.now() + timedelta(hours=1),
+        )
+
+        confirm = self.client.post(
+            f'/api/reservations/{reservation_id}/confirm/'
+        )
+
+        self.assertEqual(confirm.status_code, 409)
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.DRAFT,
+        )
+
+    def test_confirm_rejects_conflict_for_approval_resource(self):
+        existing = Reservation.objects.create(
+            user=self.user,
+            resource=self.approval_resource,
+            starts_at=timezone.now() + timedelta(days=1),
+            ends_at=timezone.now() + timedelta(days=1, hours=1),
+            status=Reservation.Status.CONFIRMED,
+        )
+        request = self.create(
+            resource=self.approval_resource,
+            **self.interval(starts_at=existing.starts_at + timedelta(minutes=30)),
+        )
+        reservation_id = request.json()['id']
+
+        confirm = self.client.post(
+            f'/api/reservations/{reservation_id}/confirm/'
+        )
+
+        self.assertEqual(confirm.status_code, 409)
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.DRAFT,
+        )
+
     def test_approval_request_does_not_block_until_staff_approves(self):
         request = self.create(resource=self.approval_resource)
         reservation_id = request.json()['id']
@@ -248,6 +292,74 @@ class ReservationApiTests(TestCase):
         self.assertEqual(response.status_code, 409)
         pending.refresh_from_db()
         self.assertEqual(pending.status, Reservation.Status.PENDING_APPROVAL)
+
+    def test_unavailable_resource_prevents_approval(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        Resource.objects.filter(pk=self.approval_resource.pk).update(is_available=False)
+
+        response = self.decide(reservation_id, 'approve')
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.PENDING_APPROVAL,
+        )
+
+    def test_missing_approval_request_is_expired_on_approve(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        Reservation.objects.filter(pk=reservation_id).update(approval_requested_at=None)
+
+        response = self.decide(reservation_id, 'approve')
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()['status'], Reservation.Status.EXPIRED)
+
+    def test_invalid_approval_decision_is_rejected_without_state_change(self):
+        request = self.create(resource=self.approval_resource)
+        reservation_id = request.json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+
+        response = self.decide(reservation_id, 'maybe')
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.PENDING_APPROVAL,
+        )
+
+    def test_service_rejects_invalid_approval_decision(self):
+        reservation_id = self.create(resource=self.approval_resource).json()['id']
+        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
+        actor = User(self.staff.pk, approval_permission=True)
+
+        with self.assertRaises(ReservationError) as raised:
+            build_service().approve(reservation_id, actor, decision='maybe')
+
+        self.assertEqual(raised.exception.code, 'invalid_input')
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.PENDING_APPROVAL,
+        )
+
+    def test_approve_unknown_reservation_returns_not_found(self):
+        response = self.decide(999999, 'approve')
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_approve_draft_reservation_returns_conflict(self):
+        reservation_id = self.create(resource=self.approval_resource).json()['id']
+
+        response = self.decide(reservation_id, 'approve')
+
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(
+            Reservation.objects.get(pk=reservation_id).status,
+            Reservation.Status.DRAFT,
+        )
 
     def test_staff_can_reject_but_non_staff_cannot_decide(self):
         request = self.create(resource=self.approval_resource)

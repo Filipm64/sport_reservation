@@ -1,6 +1,6 @@
 # Specification Baseline v0.1
 
-**Stav: předchozí specifikace; nahrazena baseline v0.2. Týmové schválení v0.1 není doloženo.**
+**Stav: předchozí specifikace; nahrazena baseline v0.2. Týmové schválení v0.1 je zaznamenáno v zápisu týmu.**
 
 Tento dokument popisuje minimální systém pro rezervaci sportovišť. Slova
 `Reservation`, `Resource` a názvy stavů jsou použity jednotně, aby se pravidla
@@ -335,7 +335,7 @@ OP-01 odpovídá REQ-01, OP-02 REQ-02, OP-03 REQ-03 a REQ-04
 [revizi požadavků](requirements-review.md). Doménová pravidla se neodvozují
 z konkrétní databáze.
 
-**Týmové schválení v0.1: nedoloženo.** Tým doplní skutečné datum,
-schvalující členy a odkaz na schválenou revizi. Současná aplikace v0.2
-ověřuje zachované základní chování; není doloženo historické spuštění
-samostatné aplikace v0.1 ani odsouhlasení této verze před změnou.
+**Týmové schválení v0.1:** [zápis týmu](baseline-approval.md) uvádí
+přijetí dne 4. 10. 2026 členy týmu Jakub Petrov, Filip Matůš a Patrik
+Vachník a odkazuje na schválenou verzi `2c3c00c`. Současná aplikace v0.2
+ověřuje zachované základní chování této specifikace.

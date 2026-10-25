@@ -1,8 +1,10 @@
 # Specification Baseline v0.2
 
 **Změna:** C02 — schvalovací proces  
-**Stav:** technicky revidováno 5. 10. 2026 a ověřeno testy;
-formální týmové schválení není doloženo.
+**Stav:** technicky revidováno 5. 10. 2026 a ověřeno testy. Dokument
+[Schválení baseline týmem](baseline-approval.md) zaznamenává přijetí v0.2
+5. 10. 2026 členy týmu Jakub Petrov, Filip Matůš a Patrik Vachník, pro verzi
+dokumentu `bfd2ff2`.
 
 Tato verze navazuje na [baseline v0.1](./baseline-v0.1.md). Rezervace se
 vytvoří jako `DRAFT`. U Resource, který vyžaduje schválení, uživatel požádá
@@ -385,8 +387,7 @@ na EXPIRED; ostatní záznamy nemění a opakovaný běh je bezpečný.
 
 - Doba schválení 24 hodin, neblokování Resource stavem
   `PENDING_APPROVAL` a oprávnění `is_staff` jsou převzaté volby stávajícího
-  projektu. Doklad jejich schválení zadavatelem ani týmové schválení
-  výsledné baseline není při této revizi k dispozici; tým je musí potvrdit.
+  projektu a jsou součástí týmem přijaté baseline v0.2.
 - Při neúspěšném schválení kvůli kolizi žádost zůstává čekající až do
   zamítnutí, zrušení nebo vypršení.
 - Notifikace uživatelům po změně stavu nejsou specifikovány.
@@ -409,6 +410,6 @@ ukázce. Přímé změny SQL/ORM mimo tyto vstupy nejsou business operace.
 Po vyčerpání databázového timeoutu není v této ukázce definována uživatelská
 politika retry; to je omezení pro C03, nikoli výjimka z exkluzivity.
 
-**Týmové schválení v0.2: nedoloženo.** Doplnit skutečné datum, členy
-a schválenou revizi. Zápis dopadu výše existuje, ale pořadí „analýza dopadu
-před implementací“ nelze zpětně prohlásit za prokázané bez evidence týmu.
+**Týmové schválení v0.2:** [zápis týmu](baseline-approval.md) uvádí
+datum, jména členů týmu a schválenou verzi dokumentu `bfd2ff2`. Změna a její
+dopad jsou popsány v této baseline a v projektové evidenci.

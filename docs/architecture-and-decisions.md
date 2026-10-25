@@ -80,6 +80,7 @@ classDiagram
 
     class TimeRules {
         +validate_interval(interval, now)
+        +validate_approval(reservation, now)
         +is_expired(reservation, now)
         +has_conflict(interval, confirmed_intervals)
         +validate_cancellation(reservation, now)
@@ -185,7 +186,10 @@ Výstup: aktualizovaná rezervace.
 Preconditions: aktér je správce; rezervace je pending; časové pravidlo ještě nevypršelo.
 Postconditions: pro `approve` se rezervace potvrdí, pokud neexistuje konflikt; pro `reject` přejde do `REJECTED`.
 Vedlejší efekty: trvalá změna v transakčním rozsahu.
-Chování při chybě: vrací konflikty nebo `expired` bez ukládání terminálního stavu.
+Chování při chybě: konflikty a neplatný vstup stav neukládají. Pokud je
+žádost po deadlinu, služba uloží `EXPIRED`, dokončí transakci a poté vrátí
+chybu `expired`; odmítnutí požadovaného schválení či zamítnutí tedy nevrací
+žádost do `PENDING_APPROVAL`.
 
 Algorithm / decision logic: (if relevant)
 
