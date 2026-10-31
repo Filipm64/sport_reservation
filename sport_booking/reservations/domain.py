@@ -17,6 +17,29 @@ class User:
 
 
 @dataclass(frozen=True)
+class ResourceListing:
+    id: int
+    name: str
+    sport_name: str
+    location: str
+    opens_at: str
+    closes_at: str
+    is_available: bool
+    requires_approval: bool
+
+
+@dataclass(frozen=True)
+class ReservationListing:
+    id: int
+    resource_name: str
+    location: str
+    starts_at: datetime
+    ends_at: datetime
+    status: str
+    username: str
+
+
+@dataclass(frozen=True)
 class Resource:
     id: int
     is_available: bool

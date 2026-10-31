@@ -26,6 +26,18 @@ U některých sportovišť žádost před potvrzením posoudí správce.
 - Approve Reservation
 - Cancel Reservation
 
+## Webové rozhraní
+- Veřejný katalog zobrazuje sportoviště, lokalitu, otevírací dobu,
+  dostupnost a informaci o požadovaném schválení.
+- Zákazník si může vytvořit účet, přihlásit se a spravovat pouze své
+  rezervace. Správce je existující Django uživatel s `is_staff`; veřejná
+  registrace toto oprávnění nepřiděluje.
+- Rezervační formulář kontroluje dostupnost a vytváří `DRAFT`. Potvrzení,
+  schválení a zrušení volají stejné služby jako API; webové rozhraní proto
+  nepřidává vlastní pravidla životního cyklu.
+- Správa katalogu zůstává v Django administraci. Notifikace nejsou součástí
+  tohoto rozhraní ani baseline v0.2.
+
 ## Stavy
 `DRAFT → CONFIRMED` pro Resource bez schvalování.
 

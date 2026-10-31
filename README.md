@@ -39,6 +39,20 @@ V `/admin/` vytvořte Sport a Resource. Příznak `Requires approval` určuje,
 zda potvrzení musí posoudit správce. Rezervace v adminu slouží pouze
 k prohlížení; jejich změny procházejí API.
 
+## Webové rozhraní
+
+Po spuštění serveru otevřete `http://127.0.0.1:8000/`. Veřejný katalog
+zobrazuje dostupná sportoviště; zákazník si může vytvořit účet přes
+**Vytvořit účet**, přihlásit se, ověřit dostupnost a spravovat své rezervace.
+Správci se přihlašují svým Django účtem s `is_staff`; na úvodní stránce
+vyřizují čekající žádosti. Veřejná registrace vytváří pouze běžné účty.
+
+Katalog Sport/Resource se nadále spravuje v `/admin/`. Web i API používají
+stejné rezervační služby a pravidla. Uživatelské rozhraní nepřidává
+notifikace ani automatické spouštění expirace. Časy ve formuláři se
+zobrazují v časovém pásmu `Europe/Prague`; API nadále vyžaduje ISO 8601
+datum a čas s pásmem.
+
 ## API a předvedení
 
 API používá přihlášeného Django uživatele a CSRF ochranu. Všechny datové

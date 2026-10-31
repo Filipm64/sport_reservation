@@ -1,0 +1,21 @@
+{% extends 'reservations/base.html' %}
+{% block title %}Přihlášení — Hřiště{% endblock %}
+{% block content %}
+<section class="auth-page">
+  <div class="auth-card">
+    <span class="eyebrow">VÍTEJTE ZPĚT</span>
+    <h1>Přihlaste se<br><span>a pojďte hrát.</span></h1>
+    <p class="auth-intro">Vaše další sportovní chvíle už čeká.</p>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="field"><label for="{{ form.username.id_for_label }}">Uživatelské jméno</label>{{ form.username }}{% if form.username.errors %}<span class="field-error">{{ form.username.errors }}</span>{% endif %}</div>
+      <div class="field"><label for="{{ form.password.id_for_label }}">Heslo</label>{{ form.password }}{% if form.password.errors %}<span class="field-error">{{ form.password.errors }}</span>{% endif %}</div>
+      {% if next %}<input type="hidden" name="next" value="{{ next }}">{% endif %}
+      <button class="button auth-submit" type="submit">Přihlásit se <span aria-hidden="true">↗</span></button>
+    </form>
+    <p class="auth-switch">Ještě nemáte účet? <a href="{% url 'register' %}">Vytvořit účet</a></p>
+  </div>
+  <div class="auth-side"><div class="auth-side-art"><span>HRAJTE<br><em>NAPLNO.</em></span><div class="auth-ball"></div></div><p>Sportoviště na dosah.<br>Termín podle vás.</p></div>
+</section>
+{% endblock %}

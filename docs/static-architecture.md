@@ -8,7 +8,7 @@ rezervační aplikace; nevzniká samostatná rezervační služba.
 flowchart TB
     subgraph system["Reservation System"]
         subgraph app["Rezervační aplikace — varianta A z ADR-01"]
-            entry["Vstupní rozhraní<br/>role: přijmout požadavek, vrátit výsledek"]
+            entry["Vstupní rozhraní<br/>API a webové rozhraní<br/>role: přijmout požadavek, vrátit výsledek"]
             auth["Identita a oprávnění<br/>role: přihlášení a povolení operace<br/>owns: identity a schvalovací oprávnění"]
             reservations["Správa rezervací<br/>role: vytvoření, potvrzení, schválení, zrušení, expirace<br/>owns: životní cyklus Reservation, ApprovalRequest a invariant BR-02"]
             availability["Dotazy na dostupnost<br/>role: zjistit dostupnost bez změny stavu"]
@@ -67,3 +67,9 @@ Plánované spouštění expirace pouze vyvolá tento systémový vstup; neurču
 pravidla vypršení. Správa katalogu Sport/Resource není v tomto rezervačním
 slice rozkreslená. Logické rozdělení je nyní realizované v kódu; mapování tříd na soubory
 je v H2. Automatické spouštění expirace zůstává provozním úkolem.
+
+Webový vstup v `reservations/web_views.py` navíc skládá read-only přehled
+pro zákazníka a správce prostřednictvím `PortalQueries`. Čtení katalogu a
+rezervací vede přes `DataStore`; změny životního cyklu nadále provádí pouze
+`ReservationService`. Registrace vytváří běžného Django uživatele a
+nepřiděluje `is_staff`.

@@ -1,0 +1,21 @@
+{% extends 'reservations/base.html' %}
+{% block title %}Vytvoření účtu — Hřiště{% endblock %}
+{% block content %}
+<section class="auth-page">
+  <div class="auth-card">
+    <span class="eyebrow">ZAČNĚTE HRÁT</span>
+    <h1>Vytvořte si<br><span>svůj účet.</span></h1>
+    <p class="auth-intro">Zabere to jen chvilku. Pak už si vybíráte termín.</p>
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <div class="field"><label for="{{ field.id_for_label }}">{% if field.name == 'username' %}Uživatelské jméno{% elif field.name == 'password1' %}Heslo{% else %}Potvrzení hesla{% endif %}</label>{{ field }}{% if field.help_text %}<span class="field-help">{{ field.help_text }}</span>{% endif %}{% if field.errors %}<span class="field-error">{{ field.errors }}</span>{% endif %}</div>
+      {% endfor %}
+      <button class="button auth-submit" type="submit">Vytvořit účet <span aria-hidden="true">↗</span></button>
+    </form>
+    <p class="auth-switch">Už účet máte? <a href="{% url 'login' %}">Přihlásit se</a></p>
+  </div>
+  <div class="auth-side"><div class="auth-side-art"><span>VÁŠ ČAS.<br><em>VAŠE HRA.</em></span><div class="auth-ball"></div></div><p>Najděte si sportoviště,<br>které vás rozhýbe.</p></div>
+</section>
+{% endblock %}

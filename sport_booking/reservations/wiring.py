@@ -2,6 +2,7 @@
 from .api import ReservationEndpoint
 from .identity import IdentityAccess
 from .persistence import DjangoDataStore
+from .portal import PortalQueries
 from .rules import TimeRules
 from .services import AvailabilityQueries, ReservationService
 
@@ -14,3 +15,7 @@ def build_endpoint():
     service = build_service()
     availability = AvailabilityQueries(DjangoDataStore, service.rules)
     return ReservationEndpoint(service, availability)
+
+
+def build_portal_queries():
+    return PortalQueries(DjangoDataStore)

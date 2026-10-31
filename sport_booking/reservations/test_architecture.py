@@ -42,7 +42,10 @@ class ArchitectureDependencyTests(SimpleTestCase):
             return problems
 
         root = Path(__file__).parent
-        for filename in ('views.py', 'api.py', 'management/commands/expire_reservations.py'):
+        for filename in (
+            'views.py', 'web_views.py', 'api.py',
+            'management/commands/expire_reservations.py',
+        ):
             with self.subTest(file=filename):
                 self.assertEqual(violations((root / filename).read_text()), [], filename)
 
@@ -71,7 +74,8 @@ class ArchitectureDependencyTests(SimpleTestCase):
             'identity': {'domain'}, 'persistence': {'models', 'domain'},
             'services': {'domain', 'identity', 'persistence', 'rules'},
             'api': {'domain', 'services'}, 'views': {'wiring'},
-            'wiring': {'api', 'identity', 'persistence', 'rules', 'services'},
+            'portal': set(),
+            'wiring': {'api', 'identity', 'persistence', 'portal', 'rules', 'services'},
         }
         for module, allowed in allowed_local.items():
             tree = ast.parse((root / f'{module}.py').read_text())
@@ -86,6 +90,12 @@ class ArchitectureDependencyTests(SimpleTestCase):
                         self.assertFalse(node.module.startswith('django.db'), module)
                     if module in ('services', 'rules', 'identity', 'domain'):
                         self.assertFalse(node.module.startswith('django.http'), module)
+        portal_tree = ast.parse((root / 'portal.py').read_text())
+        portal_imports = {
+            node.module for node in ast.walk(portal_tree)
+            if isinstance(node, ast.ImportFrom) and node.level
+        }
+        self.assertEqual(portal_imports, set())
         service_tree = ast.parse((root / 'services.py').read_text())
         self.assertNotIn('DjangoDataStore', {
             name.id for name in ast.walk(service_tree) if isinstance(name, ast.Name)

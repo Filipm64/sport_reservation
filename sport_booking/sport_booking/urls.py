@@ -18,9 +18,19 @@ from django.contrib import admin
 from django.urls import path
 
 from reservations import views
+from reservations import web_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', web_views.home, name='home'),
+    path('registrace/', web_views.register, name='register'),
+    path('prihlaseni/', web_views.PortalLoginView.as_view(), name='login'),
+    path('odhlaseni/', web_views.PortalLogoutView.as_view(), name='logout'),
+    path(
+        'rezervace/<int:reservation_id>/<str:action>/',
+        web_views.reservation_action,
+        name='reservation-action',
+    ),
     path('api/reservations/', views.create_reservation, name='create-reservation'),
     path('api/availability/', views.check_availability, name='check-availability'),
     path(

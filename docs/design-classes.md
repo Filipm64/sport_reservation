@@ -125,6 +125,7 @@ implementace ani části nepoužité v H1 se zde nerozkreslují.
 | TimeRules | `reservations/rules.py` |
 | DataStore a konkrétní DjangoDataStore | `reservations/persistence.py` |
 | Doménové entity a hodnoty | `reservations/domain.py` |
+| Webový portál a jeho čtecí dotazy | `reservations/web_views.py`, `reservations/portal.py` |
 
 `wiring.py` propojuje konkrétní implementace při spuštění. ORM modely
 zůstávají schématem pro uložení a nejsou totožné s doménovými objekty.

@@ -5,7 +5,10 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 
 from . import models
-from .domain import ApprovalRequest, Reservation, ReservationError, Resource, TimeInterval, User
+from .domain import (
+    ApprovalRequest, Reservation, ReservationError, ReservationListing, Resource,
+    ResourceListing, TimeInterval, User,
+)
 
 
 class DataStore(Protocol):
@@ -16,6 +19,8 @@ class DataStore(Protocol):
     def load_resource(self, resource_id, protected=False) -> Resource: ...
     def confirmed_intervals(self, resource_id) -> list[TimeInterval]: ...
     def pending_ids(self) -> list[int]: ...
+    def list_resources(self) -> list[ResourceListing]: ...
+    def list_reservations(self, user_id=None) -> list[ReservationListing]: ...
     def save(self, reservation): ...
     def commit(self): ...
     def rollback(self): ...
@@ -83,6 +88,32 @@ class DjangoDataStore:
         return list(models.Reservation.objects.filter(
             status=models.Reservation.Status.PENDING_APPROVAL,
         ).values_list('pk', flat=True))
+
+    def list_resources(self):
+        return [
+            ResourceListing(
+                row.pk, row.name, row.sport.name, row.location,
+                row.opens_at.strftime('%H:%M'), row.closes_at.strftime('%H:%M'),
+                row.is_available, row.requires_approval,
+            )
+            for row in models.Resource.objects.select_related('sport').order_by('name')
+        ]
+
+    def list_reservations(self, user_id=None):
+        query = models.Reservation.objects.select_related('resource', 'user').order_by(
+            '-starts_at',
+        )
+        if user_id is not None:
+            query = query.filter(user_id=user_id)
+        else:
+            query = query.filter(status=models.Reservation.Status.PENDING_APPROVAL)
+        return [
+            ReservationListing(
+                row.pk, row.resource.name, row.resource.location,
+                row.starts_at, row.ends_at, row.status, row.user.username,
+            )
+            for row in query
+        ]
 
     def save(self, reservation):
         if self._atomic is None:

@@ -1,0 +1,145 @@
+{% extends 'reservations/base.html' %}
+{% block title %}Hřiště — rezervujte si svůj čas{% endblock %}
+{% block content %}
+<section class="hero">
+  <div class="hero-copy">
+    <span class="eyebrow"><span class="eyebrow-line"></span> SPORT PODLE VÁS</span>
+    <h1>Čas na hru.<br><span>Bez čekání.</span></h1>
+    <p>Najděte sportoviště, které vám sedne. Vyberte si svůj termín a nechte zbytek na nás.</p>
+    <a class="text-link" href="#sportoviste">Prozkoumat sportoviště <span aria-hidden="true">↓</span></a>
+  </div>
+  <div class="hero-art" aria-hidden="true">
+    <div class="art-court">
+      <div class="court-line court-mid"></div><div class="court-line court-center"></div>
+      <div class="court-line court-box court-box-left"></div><div class="court-line court-box court-box-right"></div>
+      <div class="court-circle"></div><span class="art-ball"></span>
+    </div>
+    <div class="art-note"><span class="art-note-icon">↗</span><span><strong>Váš další zápas</strong><small>je blíž, než myslíte</small></span></div>
+    <span class="art-spark art-spark-one">✳</span><span class="art-spark art-spark-two">✳</span>
+  </div>
+</section>
+
+<section class="booking-section" aria-labelledby="booking-title">
+  <div class="section-heading">
+    <div><span class="eyebrow">JEDNODUŠE A RYCHLE</span><h2 id="booking-title">Najděte svůj termín</h2></div>
+    <p>Rezervaci můžete vytvořit až 30 dní dopředu.<br>Jeden termín může trvat maximálně 2 hodiny.</p>
+  </div>
+  {% if user.is_authenticated %}
+    {% if resources %}
+      <form class="booking-form" method="post" action="{% url 'home' %}">
+        {% csrf_token %}
+        <div class="field field-venue"><label for="{{ form.resource_id.id_for_label }}">Sportoviště</label>{{ form.resource_id }}</div>
+        <div class="field"><label for="{{ form.starts_at.id_for_label }}">Začátek</label>{{ form.starts_at }}</div>
+        <div class="field"><label for="{{ form.ends_at.id_for_label }}">Konec</label>{{ form.ends_at }}</div>
+        <div class="booking-actions">
+          <button class="button button-outline" name="action" value="availability" type="submit"><span aria-hidden="true">◷</span> Zkontrolovat termín</button>
+          <button class="button" name="action" value="create" type="submit">Vytvořit žádost <span aria-hidden="true">↗</span></button>
+        </div>
+        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+        {% for field in form %}{% if field.errors %}<div class="form-errors">{{ field.label }}: {{ field.errors }}</div>{% endif %}{% endfor %}
+        {% if availability_result == 'available' %}<p class="availability-result result-available">Termín vypadá volně. Potvrďte ho vytvořením žádosti.</p>{% endif %}
+        {% if availability_result == 'unavailable' %}<p class="availability-result result-unavailable">Tento termín není dostupný. Zkuste jiný čas.</p>{% endif %}
+      </form>
+    {% else %}
+      <div class="empty-state"><span class="empty-icon">＋</span><div><strong>Sportoviště se připravují</strong><p>Jakmile správce přidá první sportoviště, najdete ho právě tady.</p></div></div>
+    {% endif %}
+  {% else %}
+    <div class="booking-guest">
+      <p>Pro kontrolu dostupnosti a rezervaci se nejdřív přihlaste.</p>
+      <a class="button" href="{% url 'login' %}">Přihlásit se <span aria-hidden="true">↗</span></a>
+      <a class="text-link" href="{% url 'register' %}">Ještě nemáte účet? Zaregistrujte se</a>
+    </div>
+  {% endif %}
+</section>
+
+<section class="venues-section" id="sportoviste" aria-labelledby="venues-title">
+  <div class="section-heading">
+    <div><span class="eyebrow">VYBERTE SI MÍSTO</span><h2 id="venues-title">Sportoviště pro každý den</h2></div>
+    <span class="count-pill">{{ resources|length }} {% if resources|length == 1 %}místo{% elif resources|length == 2 or resources|length == 3 or resources|length == 4 %}místa{% else %}míst{% endif %}</span>
+  </div>
+  {% if resources %}
+    <div class="venue-grid">
+      {% for resource in resources %}
+        <article class="venue-card">
+          <div class="venue-visual visual-{{ forloop.counter0|divisibleby:3|yesno:'one,two' }}">
+            <span class="venue-monogram">{{ resource.sport_name|first|upper }}</span>
+            <span class="venue-sport">{{ resource.sport_name }}</span>
+            {% if resource.requires_approval %}<span class="approval-tag">Se schválením</span>{% endif %}
+          </div>
+          <div class="venue-info">
+            <div class="venue-title-row"><h3>{{ resource.name }}</h3><span class="availability-dot {% if not resource.is_available %}is-closed{% endif %}" title="{% if resource.is_available %}Dostupné{% else %}Momentálně nedostupné{% endif %}"></span></div>
+            <p class="venue-location"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 18s6-5.1 6-10a6 6 0 1 0-12 0c0 4.9 6 10 6 10Z"/><circle cx="10" cy="8" r="2"/></svg>{{ resource.location }}</p>
+            <div class="venue-meta"><span>Otevírací doba</span><strong>{{ resource.opens_at }}–{{ resource.closes_at }}</strong></div>
+            {% if not resource.is_available %}<p class="closed-note">Momentálně nedostupné</p>{% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty-state"><span class="empty-icon">⌁</span><div><strong>Zatím tu nic není</strong><p>Aktuálně nejsou přidaná žádná sportoviště. Zkuste to znovu později.</p></div></div>
+  {% endif %}
+</section>
+
+{% if user.is_authenticated %}
+  <section class="reservations-section" id="moje-rezervace" aria-labelledby="reservations-title">
+    <div class="section-heading">
+      <div><span class="eyebrow">VAŠE SPORTOVNÍ PLÁNY</span><h2 id="reservations-title">Moje rezervace</h2></div>
+      <span class="count-pill">{{ reservations|length }} {% if reservations|length == 1 %}rezervace{% elif reservations|length < 5 %}rezervace{% else %}rezervací{% endif %}</span>
+    </div>
+    {% if reservations %}
+      <div class="reservation-list">
+        {% for reservation in reservations %}
+          <article class="reservation-row">
+            <div class="reservation-date"><span>{{ reservation.starts_at|date:"j" }}</span><small>{{ reservation.starts_at|date:"M" }}</small></div>
+            <div class="reservation-main">
+              <h3>{{ reservation.resource_name }}</h3>
+              <p>{{ reservation.location }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"D, j. F" }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"H:i" }}–{{ reservation.ends_at|date:"H:i" }}</p>
+            </div>
+            <span class="status status-{{ reservation.status|lower }}">{% if reservation.status == 'DRAFT' %}K potvrzení{% elif reservation.status == 'PENDING_APPROVAL' %}Čeká na schválení{% elif reservation.status == 'CONFIRMED' %}Potvrzeno{% elif reservation.status == 'REJECTED' %}Zamítnuto{% elif reservation.status == 'EXPIRED' %}Vypršelo{% else %}Zrušeno{% endif %}</span>
+            <div class="reservation-actions">
+              {% if reservation.status == 'DRAFT' and reservation.starts_at > now %}
+                <form method="post" action="{% url 'reservation-action' reservation.id 'confirm' %}">{% csrf_token %}<button class="button button-small" type="submit">Potvrdit</button></form>
+              {% endif %}
+              {% if reservation.status == 'PENDING_APPROVAL' and reservation.starts_at > now or reservation.status == 'CONFIRMED' and reservation.starts_at > now or reservation.status == 'DRAFT' and reservation.starts_at > now %}
+                <form method="post" action="{% url 'reservation-action' reservation.id 'cancel' %}">{% csrf_token %}<button class="button-quiet" type="submit">Zrušit</button></form>
+              {% endif %}
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state"><span class="empty-icon">↗</span><div><strong>Zatím žádné rezervace</strong><p>Vaše rezervace se zobrazí tady. Najděte si sportoviště a svůj první termín.</p></div><a class="text-link" href="#booking-title">Vytvořit rezervaci ↑</a></div>
+    {% endif %}
+  </section>
+{% endif %}
+
+{% if user.is_staff %}
+  <section class="staff-section" aria-labelledby="staff-title">
+    <div class="section-heading">
+      <div><span class="eyebrow">SPRÁVA SPORTOVIŠTĚ</span><h2 id="staff-title">Čekající žádosti</h2></div>
+      <span class="count-pill">{{ pending_reservations|length }} čeká</span>
+    </div>
+    {% if pending_reservations %}
+      <div class="reservation-list">
+        {% for reservation in pending_reservations %}
+          <article class="reservation-row">
+            <div class="reservation-date"><span>{{ reservation.starts_at|date:"j" }}</span><small>{{ reservation.starts_at|date:"M" }}</small></div>
+            <div class="reservation-main">
+              <h3>{{ reservation.resource_name }}</h3>
+              <p>{{ reservation.username }} <span class="meta-separator">·</span> {{ reservation.location }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"D, j. F, H:i" }}</p>
+            </div>
+            <span class="status status-pending_approval">Čeká na schválení</span>
+            <div class="reservation-actions">
+              <form method="post" action="{% url 'reservation-action' reservation.id 'approve' %}">{% csrf_token %}<button class="button button-small" type="submit">Schválit</button></form>
+              <form method="post" action="{% url 'reservation-action' reservation.id 'reject' %}">{% csrf_token %}<button class="button-quiet" type="submit">Zamítnout</button></form>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state"><span class="empty-icon">✓</span><div><strong>Vše vyřízeno</strong><p>Žádné žádosti teď nečekají na schválení.</p></div></div>
+    {% endif %}
+    <a class="text-link admin-link" href="{% url 'admin:index' %}">Spravovat nabídku sportovišť v administraci <span aria-hidden="true">↗</span></a>
+  </section>
+{% endif %}
+{% endblock %}
