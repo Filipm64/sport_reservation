@@ -298,7 +298,7 @@ Unit/component tests executed:
 - `test_expired_approval_cannot_be_approved` – komponentní test pro expirovanou žádost.
 - `test_staff_can_reject_but_non_staff_cannot_decide` – komponentní test pro oprávnění.
 - `test_failed_save_rolls_back_and_never_reports_success` – integrace/rollback test.
-- Sada Django testů `reservations`: před změnou C06 měla 37 testů; po doplnění F1 jsou dva regresní testy navíc. Aktuální výsledek je zaznamenán v C06 níže.
+- Sada Django testů `reservations` měla při hodnocené baseline 37 testů. Po opravách C06 má aktuálně 53 testů; aktuální běh je zaznamenán níže.
 
 Design ↔ implementation mismatch:
 - Nalezen rozpor v kontraktu chyby approve: text tvrdil, že `EXPIRED` se neukládá, ale pseudokód, implementace i testy stav ukládají. Opraven popis kontraktu.
@@ -320,20 +320,113 @@ Commit/tag:
 
 ## C06 — Reakce na externí hodnocení
 
-Hodnocení posuzovalo čistý archiv `4bb9ebc` z 21. 10. 2026. Nálezy F1–F3
-jsou přijaty; žádný z nich neukázal chybu rozhodovací logiky v aplikaci.
-Odhalily chybějící testy a zastaralé či rozporné návrhové záznamy.
+Hodnocení posuzovalo čistý archiv `4bb9ebc` z 21. 10. 2026. Následují tři
+ověřené nálezy z formuláře. Jejich opravy jsou ve změně `431b7da` a ověřeny
+proti aktuálnímu kódu; hodnocený stav zůstává `4bb9ebc`.
 
-| Nález | Dispozice | Oprava / důkaz |
-| --- | --- | --- |
-| B1 — baseline a identifikace evidence | Částečně přijato při hodnocení; evidence doplněna | Hodnocený stav: `4bb9ebc`. Odkazy na výsledky cvičení: C02 `bfd2ff2`, C03 `762af3d`, C05 `3e05867`. Zápis schválení nyní uvádí členy týmu a schválené revize baseline v0.1 `2c3c00c` a v0.2 `bfd2ff2`. |
-| F1 — Confirm u Resource se schvalováním | Přijato | Přidány regresní testy neplatného intervalu a existující kolize. Oba očekávají 409 a zachování `DRAFT`. Implementace již před testem kontroly prováděla. |
-| F2 — chování při expiraci v C05 DD | Přijato | Kontrakt nyní odpovídá kódu a pseudokódu: `EXPIRED` se uloží a commitne, následně se vrátí chyba. |
-| F3 — deadline v H1/H2 | Přijato | H1/H2 nyní rozlišují `is_expired()` od validace intervalu a ukazují odpovědnost služby za přechod, uložení a odmítnutí po expiraci. |
-| D3 — dohledatelnost odvození testů | Přijato | Doplněna mapa prvků DD na konkrétní testy a zdůvodnění integrační úrovně rollback testu i komponentní úrovně testů deadline. |
-| D4 — nepokryté větve approve | Přijato | Přidány testy pro nedostupný Resource, chybějící čas žádosti, neplatné rozhodnutí na API i ve službě a neznámou rezervaci. |
+### F1 — Confirm u Resource se schvalováním
 
-Finální ověření po změnách C06: **45 testů prošlo, žádný nebyl přeskočen**
-při použití samostatné souborové SQLite DB. Django system check bez problémů;
-kontrola migrací nevyžaduje změny. Testy neprokazují chování na jiné databázi
-než SQLite a nejsou zátěžovým testem.
+- **Claim:** OP-03 musí před přechodem do `PENDING_APPROVAL` odmítnout neplatný interval a existující kolizi; viz [baseline v0.2](baseline-v0.2.md) (OP-03) a REQ-03 v [revizi požadavků](requirements-review.md).
+- **Expected:** neplatný interval nebo kolize vrátí chybu a rezervace zůstane `DRAFT`.
+- **Observed na baseline `4bb9ebc`:** implementace obě kontroly měla, ale chyběl test Confirm pro tyto dvě větve u Resource se schvalováním. Hodnotitel doložil přežití mutací a rozdíl jejich chování dočasným testem.
+- **Verify:** nález reprodukovaný hodnotitelem v čistém archivu; aktuální pokrytí je v `sport_booking/reservations/tests.py`: `test_confirm_rejects_invalid_interval_for_approval_resource` a `test_confirm_rejects_conflict_for_approval_resource`.
+- **Disposition:** VERIFIED FINDING — ACCEPT. Důvod: specifikované chování nebylo regresními testy dostatečně ověřeno.
+- **Action / owner:** doplnit oba testy — tým.
+- **Closure evidence:** změna `431b7da`; oba testy kontrolují odmítnutí a zachování `DRAFT`. Aktuální celá sada 53 testů prošla.
+
+### F2 — chování při expiraci v C05 DD
+
+- **Claim:** C05 popisoval chybu při expiraci tak, že terminální stav není uložen; evidence zároveň tvrdila, že nesoulad návrhu s implementací nebyl nalezen. Viz [návrhový kontrakt](architecture-and-decisions.md) a tehdejší záznam C05 výše.
+- **Expected:** dokumentace má popisovat stejné chování jako přijatá specifikace, pseudokód a aplikace.
+- **Observed na baseline `4bb9ebc`:** služba při expiraci uložila `EXPIRED`, commitla změnu a vrátila chybu; text kontraktu tvrdil opak.
+- **Verify:** hodnotitel provedl mutaci bez uložení expirace; testy selhaly. Aktuální implementace je v `sport_booking/reservations/services.py` (`_expire_if_due`) a kontrola deadline v `rules.py` (`is_expired`).
+- **Disposition:** VERIFIED FINDING — ACCEPT. Šlo o rozpor v dokumentaci, ne o chybu implementace.
+- **Action / owner:** opravit kontrakt — tým.
+- **Closure evidence:** změna `431b7da`; kontrakt nyní říká, že `EXPIRED` se uloží a commitne před vrácením chyby. Výsledek pokrývají `test_expired_approval_cannot_be_approved` a `test_expiry_exact_deadline_on_approve_cancel_and_command`; aktuální sada 53 testů prošla.
+
+### F3 — kdo kontroluje deadline v H1/H2
+
+- **Claim:** H1/H2 přisuzovaly kontrolu deadline `validate_approval()`; viz [H1](design-sequence.md) a [H2](design-classes.md).
+- **Expected:** návrhové diagramy mají správně ukazovat oddělenou kontrolu deadlinu a validaci časového intervalu.
+- **Observed na baseline `4bb9ebc`:** deadline kontrolovalo `is_expired()` a služba `_expire_if_due`; `validate_approval()` validovalo jen interval. Změna běhu aplikace nebyla potřeba.
+- **Verify:** nález porovnán hodnotitelem s runtime trace a implementací v `sport_booking/reservations/rules.py` a `services.py`. Aktuální diagramy rozlišují `is_expired()` před `validate_approval()`.
+- **Disposition:** VERIFIED FINDING — ACCEPT. H1/H2 byly v této části zastaralé.
+- **Action / owner:** opravit oba pohledy — tým.
+- **Closure evidence:** změna `431b7da`; popis v H1/H2 odpovídá kódu. Deadline a hraniční chování kryje `test_expiry_exact_deadline_on_approve_cancel_and_command`; aktuální sada 53 testů prošla.
+
+### Další body hodnocení a otevřené riziko
+
+| Položka | Rozhodnutí a důvod | Akce / vlastník | Důkaz nebo stav |
+| --- | --- | --- | --- |
+| B1 — baseline a dohledatelnost | VERIFIED EVIDENCE GAP — ACCEPT; původní záznam nepropojoval výsledky cvičení s revizemi a rozporoval schválení v0.2. | Doplnit revize a schválení — tým. | Odkazy doplněny: hodnocená baseline `4bb9ebc`; výstupy C02 `bfd2ff2`, C03 `762af3d`, C05 `3e05867`; schválení v [zápisu baseline](baseline-approval.md). Samostatný tag nebyl vytvořen; hodnocenou baseline identifikuje commit. |
+| D3 — mapování návrhu na testy | ACCEPT. Dohledatelnost v C05 byla nedostatečná. | Doplnit vazbu prvek návrhu → test a zdůvodnění úrovně — tým. | Tabulka „Tests derived from DD“ a zdůvodnění úrovně testů v části C05 výše. |
+| D4 — nepokryté větve approve | ACCEPT. V hodnocené baseline nebyly všechny relevantní větve ověřeny. | Doplnit testy — tým. | Např. `test_unavailable_resource_prevents_approval`, `test_missing_approval_request_is_expired_on_approve`, `test_invalid_approval_decision_is_rejected_without_state_change`, `test_service_rejects_invalid_approval_decision`; viz `sport_booking/reservations/tests.py`. |
+| Provozní expirace a jiné databáze | Otevřené riziko, nikoli uzavřený nález C06. | Automatické periodické spouštění a případná změna databáze vyžadují samostatnou práci a ověření — tým. | Testy a následné ověření níže proběhly na SQLite; automatický plánovač není nastaven. Chování na jiné DB a zátěžové chování: **NOT VERIFIED**. |
+
+**Aktuální ověření:** 1. 11. 2026, revize `726cc62` —
+`PYTHONDONTWRITEBYTECODE=1 SPORT_BOOKING_TEST_DB=/tmp/sport-booking-c06-review.sqlite3 .venv/bin/python sport_booking/manage.py test reservations --noinput`.
+Výsledek: **53 testů prošlo, žádný nebyl přeskočen**; Django system check bez
+problému. Jde o ověření celé sady na samostatné souborové SQLite DB, nikoli o
+zátěžový test nebo ověření jiné databáze.
+
+## Registr rizik — C07/C08
+
+Rizika vycházejí z aktuálního projektu a jeho ověřovací evidence. C06
+zjištění F1–F3 a D3–D4 jsou uzavřena změnou `431b7da`; jejich testy a
+opravené dokumenty jsou podkladem pro R-04. Poskytnuté podklady neobsahují
+konkrétní plán dalších implementačních úkolů ani rozdělení kapacity členů,
+proto jsou termíny navázané na události a vlastníkem je tým: Jakub Petrov,
+Filip Matůš a Patrik Vachník. Možná změna DB v R-01 je podmíněný scénář,
+nikoli potvrzený plán. Skóre je `L × I` podle matice v zadání.
+
+### R-01
+
+- **Popis rizika:** Ochrana souběhu rezervací je ověřena na SQLite a používá její režim `IMMEDIATE`. Pokud se projekt převede na jinou databázi a ochrana se tam bude chovat jinak, mohou se potvrdit dvě rezervace stejného termínu a porušit BR-02.
+- **Kategorie:** Technical / Quality.
+- **Počáteční riziko (L/I/priorita/důvod):** L=2, I=3 → **HIGH (6)**. Jiná DB není ověřená; dvojí potvrzení by porušilo hlavní pravidlo rezervace.
+- **Strategie ošetření a zdůvodnění:** MITIGATE — ponechat SQLite pro demonstraci a před přijetím jiné DB ověřit ochranu souběhu.
+- **Opatření, vlastník, termín:** Před přijetím jiné DB spustit úplnou sadu včetně souběhových testů a zkontrolovat transakční ochranu. Vlastník: tým. Termín: před změnou DB.
+- **Důkaz účinnosti a stav ověření:** 53 testů prošlo na SQLite v revizi `726cc62`, včetně souběhových testů. Jiná DB: **NOT VERIFIED**.
+- **Očekávané reziduální riziko:** L=1, I=3 → **MEDIUM (3)**, pokud cílová DB projde souběhovými testy; jinak skóre nesnižovat.
+- **Skutečné reziduální riziko / NOT VERIFIED:** **NOT VERIFIED** pro jinou DB.
+- **Přijetí reziduálního rizika, vlastník, zdůvodnění:** Tým přijímá riziko při použití ověřené SQLite; případnou migraci musí tým znovu posoudit.
+- **Monitoring, trigger, contingency, další review:** Trigger: změna DB nebo selhání souběhového testu. Do ověření používat SQLite. Review před změnou DB.
+
+### R-02
+
+- **Popis rizika:** Příkaz `expire_reservations` existuje, ale pravidelný plánovač není nastavený. Pokud ho obsluha po deadlinu nespustí, žádost může zůstat jako `PENDING_APPROVAL`, dokud ji někdo neschválí, nezruší nebo nespustí příkaz.
+- **Kategorie:** Release / Operation.
+- **Počáteční riziko (L/I/priorita/důvod):** L=2, I=2 → **MEDIUM (4)**. Ruční krok je doložený, automatické spuštění ne; žádosti mohou mít zastaralý stav, i když approve/cancel expiraci kontroluje.
+- **Strategie ošetření a zdůvodnění:** MITIGATE — pro demonstraci přidat kontrolu expirace do ručního postupu; plánovač zavést, jen pokud bude součástí nasazení.
+- **Opatření, vlastník, termín:** Před demonstrací zkontrolovat čekající žádosti a v případě potřeby spustit `.venv/bin/python sport_booking/manage.py expire_reservations`. Vlastník: tým. Termín: před každou demonstrací.
+- **Důkaz účinnosti a stav ověření:** Příkaz a logiku expirace pokrývají `test_expiry_management_command_updates_old_requests` a `test_expiry_exact_deadline_on_approve_cancel_and_command`. Pravidelný plánovač ani celý postup před demonstrací nejsou ověřené.
+- **Očekávané reziduální riziko:** L=1, I=2 → **LOW (2)**, pokud se kontrola provede při každé demonstraci.
+- **Skutečné reziduální riziko / NOT VERIFIED:** **NOT VERIFIED**, dokud se postup nevyzkouší při demonstraci.
+- **Přijetí reziduálního rizika, vlastník, zdůvodnění:** Tým přijímá ruční postup pro demonstraci; automatické plánování není potvrzeným požadavkem aktuálního rozsahu.
+- **Monitoring, trigger, contingency, další review:** Trigger: žádost po deadlinu je stále čekající. Spustit příkaz ručně a zkontrolovat výsledek. Review před demonstrací nebo nasazením.
+
+### R-03
+
+- **Popis rizika:** Úspěšné ověření proběhlo v aktuálním pracovním prostředí. Pokud se projekt nepodaří spustit po čisté instalaci na jiném počítači, nemusí být možné jej včas předvést.
+- **Kategorie:** People / Resources; Schedule / Integration.
+- **Počáteční riziko (L/I/priorita/důvod):** L=2, I=3 → **HIGH (6)**. README obsahuje příkazy pro instalaci a testy, ale čisté spuštění na druhém počítači není doložené; nefunkční demo by zasáhlo hlavní výstup.
+- **Strategie ošetření a zdůvodnění:** MITIGATE — nechat dalšího člena týmu zopakovat postup od čistého checkoutu.
+- **Opatření, vlastník, termín:** Druhý člen provede instalaci, migrace, `manage.py check` a testy podle README. Vlastník: tým. Termín: před dalším předvedením.
+- **Důkaz účinnosti a stav ověření:** README uvádí reprodukovatelné příkazy a aktuálních 53 testů prošlo lokálně. Clean checkout na druhém počítači: **NOT VERIFIED**.
+- **Očekávané reziduální riziko:** L=1, I=2 → **LOW (2)**, pokud druhý člen postup úspěšně zopakuje.
+- **Skutečné reziduální riziko / NOT VERIFIED:** **NOT VERIFIED**.
+- **Přijetí reziduálního rizika, vlastník, zdůvodnění:** Tým přijme zbytkové riziko po úspěšném opakování postupu; do té doby připraví funkční vývojové prostředí jako zálohu.
+- **Monitoring, trigger, contingency, další review:** Trigger: chybějící závislost, chyba migrace nebo selhání testů. Použít ověřené vývojové prostředí a opravit README. Review před dalším předvedením.
+
+### R-04
+
+- **Popis rizika:** Při další změně schvalování nebo expirace se může upravit kód, ale neodpovídající návrh či testy zůstanou zastaralé. Stalo se to před C06: F2 našlo rozpor v popisu expirace, F3 zastaralé diagramy H1/H2 a D3–D4 nedostatečnou dohledatelnost a nepokryté větve.
+- **Kategorie:** Technical / Quality.
+- **Počáteční riziko (L/I/priorita/důvod):** L=2, I=3 → **HIGH (6)**. C06 doložilo, že k rozchodu dokumentace, kódu a testů už došlo; přehlédnutá chyba v expiraci nebo schvalování může ovlivnit stav rezervace.
+- **Strategie ošetření a zdůvodnění:** MITIGATE — při každé změně schvalování/expirace projít specifikaci, implementaci, H1/H2 a testy společně.
+- **Opatření, vlastník, termín:** Do review změny doplnit kontrolu vazeb požadavek → návrh → kód → test a spustit relevantní regresní testy. Vlastník: tým. Termín: při každé změně schvalování nebo expirace.
+- **Důkaz účinnosti a stav ověření:** Po C06 byly opraveny H1/H2 a kontrakt; doplněny testy pro F1 a D4 a mapa testů pro D3. Celá sada má 53 testů a prošla na SQLite v `726cc62`. Použití kontrolního postupu při budoucí změně: **NOT VERIFIED**.
+- **Očekávané reziduální riziko:** L=1, I=3 → **MEDIUM (3)**, pokud se kontrola provede a relevantní testy projdou; jinak skóre nesnižovat.
+- **Skutečné reziduální riziko / NOT VERIFIED:** **NOT VERIFIED** pro budoucí změny, protože žádná další změna tohoto typu nebyla tímto postupem ověřena.
+- **Přijetí reziduálního rizika, vlastník, zdůvodnění:** Tým přijímá zbytkové riziko jen při zachování společné kontroly dokumentace, kódu a testů; vlastník: tým.
+- **Monitoring, trigger, contingency, další review:** Trigger: změna pravidel schvalování/expirace, nesoulad při review nebo selhání regresního testu. Zastavit změnu do opravy odpovídajících artefaktů a opakovat testy. Review při každé takové změně.
