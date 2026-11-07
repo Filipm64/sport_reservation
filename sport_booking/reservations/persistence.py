@@ -17,10 +17,13 @@ class DataStore(Protocol):
     def load_user(self, user_id) -> User: ...
     def load_protected(self, reservation_id) -> Reservation: ...
     def load_resource(self, resource_id, protected=False) -> Resource: ...
+    def set_operating_hours(self, resource_id, opens_at, closes_at): ...
     def confirmed_intervals(self, resource_id) -> list[TimeInterval]: ...
     def pending_ids(self) -> list[int]: ...
+    def overlapping_pending_ids(self, winner: Reservation) -> list[int]: ...
     def list_resources(self) -> list[ResourceListing]: ...
-    def list_reservations(self, user_id=None) -> list[ReservationListing]: ...
+    def list_reservations(self, user_id) -> list[ReservationListing]: ...
+    def list_pending_reservations(self, now) -> list[ReservationListing]: ...
     def save(self, reservation): ...
     def commit(self): ...
     def rollback(self): ...
@@ -62,7 +65,13 @@ class DjangoDataStore:
             resource = query.get(pk=resource_id)
         except models.Resource.DoesNotExist:
             raise ReservationError('not_found', 'Resource not found.')
-        return Resource(resource.pk, resource.is_available, resource.requires_approval)
+        return Resource(resource.pk, resource.is_available, resource.requires_approval,
+                        resource.opens_at, resource.closes_at)
+
+    def set_operating_hours(self, resource_id, opens_at, closes_at):
+        if self._atomic is None:
+            raise RuntimeError('Updating operating hours requires a protected operation.')
+        models.Resource.objects.filter(pk=resource_id).update(opens_at=opens_at, closes_at=closes_at)
 
     def load_protected(self, reservation_id):
         self._begin()  # SQLite IMMEDIATE obtains its write lock before any state read.
@@ -83,6 +92,14 @@ class DjangoDataStore:
             resource_id=resource_id, status=models.Reservation.Status.CONFIRMED,
         ).values_list('starts_at', 'ends_at')]
 
+    def overlapping_pending_ids(self, winner):
+        if self._atomic is None:
+            raise RuntimeError('Selecting competing requests requires a protected operation.')
+        return list(models.Reservation.objects.filter(
+            resource_id=winner.resource.id, status='PENDING_APPROVAL',
+            starts_at__lt=winner.interval.end, ends_at__gt=winner.interval.start,
+        ).exclude(pk=winner.id).order_by('pk').values_list('pk', flat=True))
+
     def pending_ids(self):
         self._begin()
         return list(models.Reservation.objects.filter(
@@ -99,14 +116,20 @@ class DjangoDataStore:
             for row in models.Resource.objects.select_related('sport').order_by('name')
         ]
 
-    def list_reservations(self, user_id=None):
-        query = models.Reservation.objects.select_related('resource', 'user').order_by(
-            '-starts_at',
+    def list_reservations(self, user_id):
+        query = models.Reservation.objects.filter(user_id=user_id)
+        return self._reservation_listings(query)
+
+    def list_pending_reservations(self, now):
+        query = models.Reservation.objects.filter(
+            status=models.Reservation.Status.PENDING_APPROVAL,
+            starts_at__gt=now,
         )
-        if user_id is not None:
-            query = query.filter(user_id=user_id)
-        else:
-            query = query.filter(status=models.Reservation.Status.PENDING_APPROVAL)
+        return self._reservation_listings(query)
+
+    @staticmethod
+    def _reservation_listings(query):
+        query = query.select_related('resource', 'user').order_by('-starts_at', '-pk')
         return [
             ReservationListing(
                 row.pk, row.resource.name, row.resource.location,

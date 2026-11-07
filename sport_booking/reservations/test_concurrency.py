@@ -28,13 +28,13 @@ class ReservationConcurrencyTests(TransactionTestCase):
             name='Court', sport=sport, location='Ostrava',
             opens_at=time(8), closes_at=time(22),
         )
-        self.start = timezone.now() + timedelta(days=1)
+        self.start = timezone.localtime(timezone.now() + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
 
     def reservation(self, pending=False):
         return Reservation.objects.create(
             user=self.user, resource=self.resource, starts_at=self.start,
             ends_at=self.start + timedelta(hours=1),
-            status='PENDING_APPROVAL' if pending else 'DRAFT',
+            status='PENDING_APPROVAL' if pending else 'CONFIRMED',
             approval_requested_at=timezone.now() if pending else None,
         )
 
@@ -45,27 +45,28 @@ class ReservationConcurrencyTests(TransactionTestCase):
             view, reservation_id, user = operation
             try:
                 request = RequestFactory().post(
-                    '/', json.dumps({'decision': 'approve'}),
+                    '/', json.dumps({'decision': 'approve', 'resource_id': self.resource.pk,
+                                      'starts_at': self.start.isoformat(),
+                                      'ends_at': (self.start + timedelta(hours=1)).isoformat()}),
                     content_type='application/json',
                 )
                 request.user = get_user_model().objects.get(pk=user.pk)
                 barrier.wait(timeout=10)
-                return view(request, reservation_id).status_code
+                return (view(request) if reservation_id is None else view(request, reservation_id)).status_code
             finally:
                 connections.close_all()
 
         with ThreadPoolExecutor(max_workers=len(operations)) as pool:
             return list(pool.map(run, operations))
 
-    def test_conflicting_confirmations_commit_only_one_allocation(self):
-        first, second = self.reservation(), self.reservation()
+    def test_conflicting_creations_commit_only_one_allocation(self):
         results = self.race(
-            (views.confirm_reservation, first.pk, self.user),
-            (views.confirm_reservation, second.pk, self.user),
+            (views.create_reservation, None, self.user),
+            (views.create_reservation, None, self.user),
         )
-        self.assertCountEqual(results, [200, 409])
+        self.assertCountEqual(results, [201, 409])
         self.assertEqual(Reservation.objects.filter(status='CONFIRMED').count(), 1)
-        self.assertEqual(Reservation.objects.filter(status='DRAFT').count(), 1)
+        self.assertEqual(Reservation.objects.count(), 1)
 
     def test_conflicting_approvals_commit_only_one_allocation(self):
         first, second = self.reservation(pending=True), self.reservation(pending=True)
@@ -75,27 +76,19 @@ class ReservationConcurrencyTests(TransactionTestCase):
         )
         self.assertCountEqual(results, [200, 409])
         self.assertEqual(Reservation.objects.filter(status='CONFIRMED').count(), 1)
-        self.assertEqual(Reservation.objects.filter(status='PENDING_APPROVAL').count(), 1)
+        self.assertEqual(Reservation.objects.filter(status='REJECTED').count(), 1)
 
-    def test_confirm_racing_cancel_finishes_cancelled(self):
-        reservation = self.reservation()
+    def test_create_racing_approval_commits_only_one_allocation(self):
+        pending = self.reservation(pending=True)
         results = self.race(
-            (views.confirm_reservation, reservation.pk, self.user),
-            (views.cancel_reservation, reservation.pk, self.user),
-        )
-        self.assertEqual(results[1], 200)
-        self.assertIn(results[0], (200, 409))
-        reservation.refresh_from_db()
-        self.assertEqual(reservation.status, 'CANCELLED')
-
-    def test_confirm_racing_approval_commits_only_one_allocation(self):
-        draft, pending = self.reservation(), self.reservation(pending=True)
-        results = self.race(
-            (views.confirm_reservation, draft.pk, self.user),
+            (views.create_reservation, None, self.user),
             (views.approve_reservation, pending.pk, self.staff),
         )
-        self.assertCountEqual(results, [200, 409])
+        self.assertIn(results, ([201, 409], [409, 200]))
         self.assertEqual(Reservation.objects.filter(status='CONFIRMED').count(), 1)
+        pending.refresh_from_db()
+        if results[0] == 201:
+            self.assertEqual(pending.status, 'REJECTED')
 
     def test_approve_racing_cancel_finishes_cancelled(self):
         reservation = self.reservation(pending=True)
@@ -112,7 +105,7 @@ class ReservationConcurrencyTests(TransactionTestCase):
     def test_expiration_process_racing_approval_uses_shared_database(self):
         reservation = self.reservation(pending=True)
         Reservation.objects.filter(pk=reservation.pk).update(
-            approval_requested_at=timezone.now() - timedelta(hours=24),
+            starts_at=timezone.now(), ends_at=timezone.now() + timedelta(hours=1),
         )
         script = """
 import os, sys

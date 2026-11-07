@@ -1,4 +1,5 @@
 {% extends 'reservations/base.html' %}
+{% load static %}
 {% block title %}Hřiště — rezervujte si svůj čas{% endblock %}
 {% block content %}
 <section class="hero">
@@ -26,20 +27,69 @@
   </div>
   {% if user.is_authenticated %}
     {% if resources %}
-      <form class="booking-form" method="post" action="{% url 'home' %}">
-        {% csrf_token %}
-        <div class="field field-venue"><label for="{{ form.resource_id.id_for_label }}">Sportoviště</label>{{ form.resource_id }}</div>
-        <div class="field"><label for="{{ form.starts_at.id_for_label }}">Začátek</label>{{ form.starts_at }}</div>
-        <div class="field"><label for="{{ form.ends_at.id_for_label }}">Konec</label>{{ form.ends_at }}</div>
-        <div class="booking-actions">
-          <button class="button button-outline" name="action" value="availability" type="submit"><span aria-hidden="true">◷</span> Zkontrolovat termín</button>
-          <button class="button" name="action" value="create" type="submit">Vytvořit žádost <span aria-hidden="true">↗</span></button>
-        </div>
-        {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
-        {% for field in form %}{% if field.errors %}<div class="form-errors">{{ field.label }}: {{ field.errors }}</div>{% endif %}{% endfor %}
-        {% if availability_result == 'available' %}<p class="availability-result result-available">Termín vypadá volně. Potvrďte ho vytvořením žádosti.</p>{% endif %}
-        {% if availability_result == 'unavailable' %}<p class="availability-result result-unavailable">Tento termín není dostupný. Zkuste jiný čas.</p>{% endif %}
-      </form>
+      <div class="booking-card">
+        <form id="schedule-filter" class="schedule-filter" method="get" action="{% url 'home' %}#booking-title">
+          <div class="field"><label for="{{ schedule_filter.resource_id.id_for_label }}">Sportoviště</label>{{ schedule_filter.resource_id }}</div>
+          <div class="field"><label for="{{ schedule_filter.schedule_date.id_for_label }}">Den v týdnu</label>{{ schedule_filter.schedule_date }}</div>
+          <button class="button button-outline" type="submit">Zobrazit týden <span aria-hidden="true">↗</span></button>
+          {% for field in schedule_filter %}{% if field.errors %}<div class="form-errors">{{ field.errors }}</div>{% endif %}{% endfor %}
+        </form>
+        <form id="booking-form" class="booking-form booking-form-schedule" method="post" action="{% url 'home' %}#booking-title">
+          {% csrf_token %}
+          {{ form.resource_id.as_hidden }}{{ form.schedule_date }}
+          <fieldset class="booking-modes">
+            <legend>Způsob výběru termínu</legend>
+            <label><input type="radio" name="selection_mode" value="slots" {% if selection_mode == 'slots' %}checked{% endif %}> Hodinový rozvrh</label>
+            <label><input type="radio" name="selection_mode" value="manual" {% if selection_mode == 'manual' %}checked{% endif %}> Zadat přesný čas</label>
+          </fieldset>
+          <div id="schedule-panel" class="schedule-panel">
+            <div class="schedule-heading"><div><h3>Vyberte si čas na hru</h3><p>Vyberte 1 nebo 2 navazující hodiny ve stejném dni.</p></div><span class="count-pill">Europe/Prague</span></div>
+            <p class="schedule-hours">Provozní doba: <strong>{{ schedule_week.opens_at }}–{{ schedule_week.closes_at }}</strong> každý den. Maximálně 2 hodiny na rezervaci.</p>
+            <div class="schedule-legend"><span><i class="slot-dot slot-dot-free"></i>Volno</span><span><i class="slot-dot slot-dot-selected"></i>Váš výběr</span><span><i class="slot-dot slot-dot-busy"></i>Nedostupné</span></div>
+            <div class="week-toolbar">
+              {% if week_links.previous %}<a class="week-nav" href="{{ week_links.previous }}" aria-label="Předchozí týden">←</a>{% else %}<span></span>{% endif %}
+              <strong>{{ schedule_week.start|date:'j. n.' }} – {{ schedule_week.end|date:'j. n. Y' }}</strong>
+              {% if week_links.next %}<a class="week-nav" href="{{ week_links.next }}" aria-label="Další týden">→</a>{% else %}<span></span>{% endif %}
+            </div>
+            <div class="week-scroll" role="region" aria-label="Týdenní rozvrh" tabindex="0">
+              <table class="week-table">
+                <caption class="visually-hidden">Dny v týdnu ve sloupcích, hodinové bloky v řádcích. Vyberte nejvýše dvě navazující hodiny jednoho dne.</caption>
+                <thead><tr><th scope="col">Čas</th>{% for day in schedule_week.days %}<th scope="col">{{ day.name }}<small>{{ day.date|date:'j. n.' }}</small></th>{% endfor %}</tr></thead>
+                <tbody>
+                  {% for row in schedule_week.rows %}
+                    <tr><th scope="row">{{ row.label }}</th>
+                      {% for cell in row.cells %}
+                        <td>{% if cell.block %}
+                          <label class="week-slot{% if not cell.block.available %} week-slot-disabled{% endif %}" title="{{ cell.block.start|date:'D j. n.' }} {{ cell.block.label }} — {% if cell.block.available %}Volno{% else %}{{ cell.block.reason }}{% endif %}">
+                            <input type="checkbox" name="selected_blocks" value="{{ cell.block.key }}" data-start="{{ cell.block.start|date:'c' }}" data-end="{{ cell.block.end|date:'c' }}" data-day="{{ cell.block.start|date:'Y-m-d' }}" data-label="{{ cell.block.start|date:'D j. n.' }} {{ cell.block.label }}" aria-label="{{ cell.block.start|date:'D j. n.' }} {{ cell.block.label }} {% if cell.block.available %}Volno{% else %}{{ cell.block.reason }}{% endif %}" {% if cell.selected and cell.block.available %}checked{% endif %} {% if not cell.block.available %}disabled{% endif %}>
+                            <span>{% if cell.block.available %}Volno{% else %}{{ cell.block.reason }}{% endif %}</span>
+                          </label>
+                        {% else %}<span class="week-gap" title="Tato hodina v daném dni neexistuje">—</span>{% endif %}</td>
+                      {% endfor %}
+                    </tr>
+                  {% empty %}<tr><td colspan="8" class="schedule-empty">Pro vybraný týden nejsou dostupné hodinové bloky. Zkontrolujte sportoviště a provozní dobu.</td></tr>{% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <p id="slot-summary" class="slot-summary" aria-live="polite">Vyberte jeden nebo dva navazující bloky. Maximum jsou 2 hodiny.</p>
+            <p class="schedule-note">Obsazenost je orientační a při odeslání se ověřuje znovu. Čekající žádosti termín neblokují. Celá rezervace se musí vejít do provozní doby zobrazené v katalogu.</p>
+          </div>
+          <div id="manual-panel" class="manual-panel">
+            <div class="field"><label for="{{ form.starts_at.id_for_label }}">Začátek</label>{{ form.starts_at }}</div>
+            <div class="field"><label for="{{ form.ends_at.id_for_label }}">Konec</label>{{ form.ends_at }}</div>
+            <p>Vlastní čas může být i mimo celé hodiny. Maximální délka rezervace je 2 hodiny.</p>
+          </div>
+          <div class="booking-actions">
+            <button class="button button-outline" name="action" value="availability" type="submit">Zkontrolovat termín</button>
+            <button class="button" name="action" value="create" type="submit">Vytvořit rezervaci <span aria-hidden="true">↗</span></button>
+          </div>
+          {% if form.non_field_errors %}<div class="form-errors">{{ form.non_field_errors }}</div>{% endif %}
+          {% for field in form %}{% if field.errors %}<div class="form-errors">{{ field.label }}: {{ field.errors }}</div>{% endif %}{% endfor %}
+          {% if availability_result == 'available' %}<p class="availability-result result-available">Termín vypadá volně. Odešlete rezervaci; podle sportoviště se potvrdí automaticky nebo počká na správce.</p>{% endif %}
+          {% if availability_result == 'unavailable' %}<p class="availability-result result-unavailable">Tento termín není dostupný. Zkuste jiný čas.</p>{% endif %}
+        </form>
+      </div>
+      <script src="{% static 'reservations/schedule.js' %}" defer></script>
     {% else %}
       <div class="empty-state"><span class="empty-icon">＋</span><div><strong>Sportoviště se připravují</strong><p>Jakmile správce přidá první sportoviště, najdete ho právě tady.</p></div></div>
     {% endif %}
@@ -95,12 +145,9 @@
               <h3>{{ reservation.resource_name }}</h3>
               <p>{{ reservation.location }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"D, j. F" }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"H:i" }}–{{ reservation.ends_at|date:"H:i" }}</p>
             </div>
-            <span class="status status-{{ reservation.status|lower }}">{% if reservation.status == 'DRAFT' %}K potvrzení{% elif reservation.status == 'PENDING_APPROVAL' %}Čeká na schválení{% elif reservation.status == 'CONFIRMED' %}Potvrzeno{% elif reservation.status == 'REJECTED' %}Zamítnuto{% elif reservation.status == 'EXPIRED' %}Vypršelo{% else %}Zrušeno{% endif %}</span>
+            <span class="status status-{{ reservation.status|lower }}">{% if reservation.status == 'PENDING_APPROVAL' %}Čeká na schválení{% elif reservation.status == 'CONFIRMED' %}Potvrzeno{% elif reservation.status == 'REJECTED' %}Zamítnuto{% elif reservation.status == 'EXPIRED' %}Vypršelo{% else %}Zrušeno{% endif %}</span>
             <div class="reservation-actions">
-              {% if reservation.status == 'DRAFT' and reservation.starts_at > now %}
-                <form method="post" action="{% url 'reservation-action' reservation.id 'confirm' %}">{% csrf_token %}<button class="button button-small" type="submit">Potvrdit</button></form>
-              {% endif %}
-              {% if reservation.status == 'PENDING_APPROVAL' and reservation.starts_at > now or reservation.status == 'CONFIRMED' and reservation.starts_at > now or reservation.status == 'DRAFT' and reservation.starts_at > now %}
+              {% if reservation.status == 'PENDING_APPROVAL' and reservation.starts_at > now or reservation.status == 'CONFIRMED' and reservation.starts_at > now %}
                 <form method="post" action="{% url 'reservation-action' reservation.id 'cancel' %}">{% csrf_token %}<button class="button-quiet" type="submit">Zrušit</button></form>
               {% endif %}
             </div>
@@ -126,7 +173,7 @@
             <div class="reservation-date"><span>{{ reservation.starts_at|date:"j" }}</span><small>{{ reservation.starts_at|date:"M" }}</small></div>
             <div class="reservation-main">
               <h3>{{ reservation.resource_name }}</h3>
-              <p>{{ reservation.username }} <span class="meta-separator">·</span> {{ reservation.location }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"D, j. F, H:i" }}</p>
+              <p>{{ reservation.username }} <span class="meta-separator">·</span> {{ reservation.location }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"D, j. F, H:i" }}–{{ reservation.ends_at|date:"H:i" }}</p>
             </div>
             <span class="status status-pending_approval">Čeká na schválení</span>
             <div class="reservation-actions">
@@ -139,6 +186,18 @@
     {% else %}
       <div class="empty-state"><span class="empty-icon">✓</span><div><strong>Vše vyřízeno</strong><p>Žádné žádosti teď nečekají na schválení.</p></div></div>
     {% endif %}
+    <details class="hours-settings">
+      <summary>Nastavit provozní dobu sportovišť</summary>
+      <p>Jedna denní provozní doba platí každý den v týdnu. Nové rezervace i pozdější schválení musí být uvnitř tohoto intervalu.</p>
+      {% for resource in resources %}
+        <form class="hours-form" method="post" action="{% url 'update-operating-hours' resource.id %}">
+          {% csrf_token %}<strong>{{ resource.name }}</strong>
+          <div class="field"><label for="opens-{{ resource.id }}">Otevřeno od</label><input id="opens-{{ resource.id }}" class="form-control" type="time" name="opens_at" value="{{ resource.opens_at }}" required></div>
+          <div class="field"><label for="closes-{{ resource.id }}">Otevřeno do</label><input id="closes-{{ resource.id }}" class="form-control" type="time" name="closes_at" value="{{ resource.closes_at }}" required></div>
+          <button class="button button-small" type="submit">Uložit provozní dobu</button>
+        </form>
+      {% endfor %}
+    </details>
     <a class="text-link admin-link" href="{% url 'admin:index' %}">Spravovat nabídku sportovišť v administraci <span aria-hidden="true">↗</span></a>
   </section>
 {% endif %}

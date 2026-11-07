@@ -1,6 +1,6 @@
 """Reservation values and local state transitions, independent of HTTP and ORM."""
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, time
 
 
 class ReservationError(Exception):
@@ -44,6 +44,8 @@ class Resource:
     id: int
     is_available: bool
     requires_approval: bool
+    opens_at: time
+    closes_at: time
 
 
 @dataclass(frozen=True)
@@ -56,11 +58,21 @@ class TimeInterval:
 
 
 @dataclass(frozen=True)
+class HourBlock:
+    key: str
+    start: datetime
+    end: datetime
+    label: str
+    available: bool
+    reason: str
+
+
+@dataclass(frozen=True)
 class ApprovalRequest:
     requested_at: datetime
 
     def deadline(self, interval):
-        return min(self.requested_at + timedelta(hours=24), interval.start)
+        return interval.start
 
 
 @dataclass
@@ -69,7 +81,7 @@ class Reservation:
     user_id: int
     resource: Resource
     interval: TimeInterval
-    status: str = 'DRAFT'
+    status: str
     approval_request: ApprovalRequest | None = None
 
     def is_pending(self):
@@ -80,18 +92,14 @@ class Reservation:
             raise ReservationError('conflict', 'Reservation cannot change from this state.')
         self.status = target
 
-    def request_approval(self, now):
-        self._transition(('DRAFT',), 'PENDING_APPROVAL')
-        self.approval_request = ApprovalRequest(now)
-
     def confirm(self):
-        self._transition(('DRAFT', 'PENDING_APPROVAL'), 'CONFIRMED')
+        self._transition(('PENDING_APPROVAL',), 'CONFIRMED')
 
     def reject(self):
         self._transition(('PENDING_APPROVAL',), 'REJECTED')
 
     def cancel(self):
-        self._transition(('DRAFT', 'PENDING_APPROVAL', 'CONFIRMED'), 'CANCELLED')
+        self._transition(('PENDING_APPROVAL', 'CONFIRMED'), 'CANCELLED')
 
     def expire(self):
         self._transition(('PENDING_APPROVAL',), 'EXPIRED')

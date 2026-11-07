@@ -3,24 +3,15 @@
 Django aplikace pro vytvoření žádosti, kontrolu dostupnosti, potvrzení,
 zrušení a schvalování vybraných sportovišť.
 
-- [Baseline v0.1](docs/baseline-v0.1.md) a [v0.2](docs/baseline-v0.2.md)
-- [Kontrola splnění zadání a zbývající týmové úkoly](docs/c02-audit.md)
-- [Revize požadavků a vazby na testy](docs/requirements-review.md)
-- [Architektonické drivery pro C03](docs/architecture-drivers.md)
-- [Doménový třídní model pro C03](docs/domain-model.md)
-- [Odpovědnosti systému pro C03](docs/system-responsibilities.md)
-- [Kontext systému — G1](docs/system-context.md)
-- [TO-BE statická architektura — G2](docs/static-architecture.md)
-- [Vlastnictví přechodů ve statechartu — G3](docs/statechart-ownership.md)
-- [Runtime a deployment mapping — G4](docs/runtime-deployment.md)
-- [Návrhový sekvenční diagram — H1](docs/design-sequence.md)
-- [Návrhový třídní diagram — H2](docs/design-classes.md)
-- [Cross-view kontrola — I](docs/cross-view-check.md)
-- [AS-IS → TO-BE delta — J](docs/as-is-to-be-delta.md)
-- [Ověření chování — L1](docs/behavior-verification.md)
-- [Ověření architektonického pravidla — L2](docs/architecture-rule-verification.md)
-- [Evidence běhu a změn](docs/evidence-and-evolution.md)
-- [Prezentace projektu a reakce na C06](docs/presentation-c06.html) — otevřít v prohlížeči; navigace šipkami nebo mezerníkem
+## Dokumentace
+
+- [Rozcestník dokumentace](docs/README.md)
+- [Požadavky a business pravidla](docs/requirements/README.md)
+- [Vazby požadavků na návrh, implementaci a testy](docs/verification/coverage.md)
+- [Architektura](docs/architecture/README.md) a [detailní návrh](docs/design/README.md)
+- [Ověřování a evidence](docs/verification/README.md)
+- [Historie, baseline a školní etapy](docs/history/README.md)
+- [Zadání cvičení](assigments/README.md)
 
 ## Spuštění z kořene projektu
 
@@ -47,6 +38,8 @@ zobrazuje dostupná sportoviště; zákazník si může vytvořit účet přes
 Správci se přihlašují svým Django účtem s `is_staff`; na úvodní stránce
 vyřizují čekající žádosti. Veřejná registrace vytváří pouze běžné účty.
 
+Čas lze vybrat také v [týdenním hodinovém rozvrhu](docs/requirements/hourly-schedule.md): jeden nebo dva navazující bloky, maximálně 2 hodiny. Přepínač zachovává i ruční zadání přesného času. Obsazenost se znovu ověřuje při odeslání.
+
 Katalog Sport/Resource se nadále spravuje v `/admin/`. Web i API používají
 stejné rezervační služby a pravidla. Uživatelské rozhraní nepřidává
 notifikace ani automatické spouštění expirace. Časy ve formuláři se
@@ -62,7 +55,6 @@ vstupy používají časové údaje ISO 8601 s pásmem.
 | --- | --- |
 | Create | `POST /api/reservations/` — JSON `resource_id`, `starts_at`, `ends_at` |
 | Availability | `GET /api/availability/?resource_id=...&starts_at=...&ends_at=...` |
-| Confirm | `POST /api/reservations/<id>/confirm/` |
 | Approve | `POST /api/reservations/<id>/approve/` — správce; JSON `{"decision":"approve"}` nebo `{"decision":"reject"}` |
 | Cancel | `POST /api/reservations/<id>/cancel/` |
 
@@ -89,12 +81,21 @@ const created = await post('/api/reservations/', input);
 console.log(created);
 console.log(await fetch('/api/availability/?' + new URLSearchParams(input)).then(r => r.json()));
 const id = created.body.id;
-console.log(await post(`/api/reservations/${id}/confirm/`));
 // Pro Resource vyžadující schválení, jako přihlášený správce:
 // console.log(await post(`/api/reservations/${id}/approve/`, {decision: 'approve'}));
 console.log(await post(`/api/reservations/${id}/cancel/`));
 console.log(await post(`/api/reservations/${id}/cancel/`)); // opakování → 409
 ```
+
+Create vrací rovnou `CONFIRMED`, nebo `PENDING_APPROVAL` podle sportoviště. Potvrzení automaticky zamítne překrývající se čekající žádosti stejného sportoviště. Samostatný krok Confirm byl odstraněn.
+
+Po aktualizaci projektu spusťte migrace:
+
+```sh
+.venv/bin/python sport_booking/manage.py migrate
+```
+
+Migrace `0003` zachová staré záznamy `DRAFT` jako `CANCELLED`; nevytváří z nich automaticky potvrzené rezervace ani žádosti.
 
 ## Reprodukovatelné ověření
 
@@ -104,7 +105,7 @@ console.log(await post(`/api/reservations/${id}/cancel/`)); // opakování → 4
 .venv/bin/python sport_booking/manage.py makemigrations --check --dry-run
 ```
 
-Výchozí paměťová SQLite přeskočí šest testů souběhu. Pro **úplné ověření**
+Výchozí paměťová SQLite přeskočí pět testů souběhu. Pro **úplné ověření**
 použijte vyhrazený dočasný soubor testovací DB (test runner ho vytváří
 a odstraňuje; nepoužívejte cestu k aplikační databázi):
 
@@ -112,9 +113,8 @@ a odstraňuje; nepoužívejte cestu k aplikační databázi):
 SPORT_BOOKING_TEST_DB=/tmp/sport-booking-c02-tests.sqlite3 .venv/bin/python sport_booking/manage.py test reservations
 ```
 
-Při ověření C03 prošlo všech 36 testů včetně souběhu a rollbacku při chybách. Testy přes Django client
-předvádějí úspěšný i negativní/hraniční příklad každé operace. Pět testů
-souběhu používá nezávislá spojení; šestý ověřuje expiraci v samostatném procesu.
+Aktuální ověření: **101 testů, všechny prošly**, včetně souběhu, rollbacku a migrace starých DRAFT. [Výsledek a vazby na konkrétní testy](docs/verification/weekly-operating-hours.md).
+Čtyři testy souběhu používají nezávislá spojení; pátý ověřuje expiraci v samostatném procesu.
 
 ## Expirace a C03
 
@@ -122,8 +122,8 @@ souběhu používá nezávislá spojení; šestý ověřuje expiraci v samostatn
 .venv/bin/python sport_booking/manage.py expire_reservations
 ```
 
-Čekající žádost vyprší po 24 hodinách nebo při začátku rezervace, podle
-toho, co nastane dříve. Approve i Cancel deadline ověřují samy; příkaz
+Čekající žádost vyprší při začátku rezervace. Do té doby ji může vlastník
+zrušit a správce schválit nebo zamítnout; pevný 24hodinový limit neplatí. Approve i Cancel deadline ověřují samy; příkaz
 aktualizuje i nevyřízené záznamy. Plánované spouštění zůstává driverem C03.
 SQLite nyní chrání souběžné změny režimem IMMEDIATE; budoucí architektura
 musí zachovat stejný business výsledek.
@@ -139,5 +139,9 @@ HTTP vstupy jsou v `reservations/api.py`; společné rozhodování vlastní
 `ReservationService` v `services.py`. `rules.py` a `domain.py` obsahují
 časová pravidla a doménové objekty, `identity.py` oprávnění a `persistence.py`
 rozhraní ukládání s Django adaptérem. `wiring.py` propojuje tyto části.
-Expirační command volá stejnou službu. Databázové schéma a cesty API zůstaly
-zachované. Evidence C03 uvádí testy, kontrolu závislostí a commit implementace.
+Expirační command volá stejnou službu. Aktuální změna odstraňuje DRAFT a endpoint Confirm;
+[popis změny a migrace](docs/verification/reservation-lifecycle.md). Evidence C03 zachovává historické ověření.
+
+## Provozní doba sportovišť
+
+Správce ji nastaví na úvodní stránce v části **Nastavit provozní dobu sportovišť**, případně v administraci. Jedna denní doba platí každý den. Celá rezervace musí být uvnitř této doby, včetně ručního zadání a API; při schválení se kontroluje znovu. Viz [REQ-13](docs/requirements/operating-hours.md).

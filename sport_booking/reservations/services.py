@@ -1,4 +1,4 @@
-from .domain import Reservation, ReservationError
+from .domain import ApprovalRequest, Reservation, ReservationError
 from .identity import IdentityAccess
 from .persistence import DataStore
 from .rules import TimeRules
@@ -13,11 +13,24 @@ class ReservationService:
     def create(self, resource_id, interval, actor):
         with self.store_factory() as store:
             resource = store.load_resource(resource_id, protected=True)
-            self.rules.validate_interval(interval, self.rules.now())
-            reservation = Reservation(None, actor.id, resource, interval)
+            now = self.rules.now()
+            reservation = Reservation(
+                None, actor.id, resource, interval,
+                'PENDING_APPROVAL' if resource.requires_approval else 'CONFIRMED',
+                ApprovalRequest(now) if resource.requires_approval else None,
+            )
+            self._decide_confirmation(reservation, store, now)
             store.save(reservation)
+            if reservation.status == 'CONFIRMED':
+                self._reject_competing_requests(reservation, store)
             store.commit()
             return reservation
+
+    def _reject_competing_requests(self, winner, store: DataStore):
+        for reservation_id in store.overlapping_pending_ids(winner):
+            competing = store.load_protected(reservation_id)
+            competing.reject()
+            store.save(competing)
 
     def _decide_confirmation(self, reservation, store: DataStore, now):
         if reservation.is_pending():
@@ -26,6 +39,7 @@ class ReservationService:
             self.rules.validate_interval(reservation.interval, now)
         if not reservation.resource.is_available:
             raise ReservationError('conflict', 'Resource is unavailable.')
+        self.rules.validate_resource_hours(reservation.interval, reservation.resource)
         if self.rules.has_conflict(
             reservation.interval, store.confirmed_intervals(reservation.resource.id),
         ):
@@ -38,22 +52,6 @@ class ReservationService:
             store.commit()
             # The expiry is committed even though the requested action is refused.
             raise ReservationError('expired', 'Approval request expired.', reservation.status)
-
-    def confirm(self, reservation_id, actor):
-        with self.store_factory() as store:
-            reservation = store.load_protected(reservation_id)
-            self.identity.require_owner(actor, reservation)
-            if reservation.status != 'DRAFT':
-                raise ReservationError('conflict', 'Only DRAFT reservations can be confirmed.')
-            now = self.rules.now()
-            self._decide_confirmation(reservation, store, now)
-            if reservation.resource.requires_approval:
-                reservation.request_approval(now)
-            else:
-                reservation.confirm()
-            store.save(reservation)
-            store.commit()
-            return reservation
 
     def approve(self, reservation_id, actor, decision='approve'):
         self.identity.require_approver(actor)
@@ -71,6 +69,8 @@ class ReservationService:
             else:
                 raise ReservationError('invalid_input', "decision must be 'approve' or 'reject'.")
             store.save(reservation)
+            if reservation.status == 'CONFIRMED':
+                self._reject_competing_requests(reservation, store)
             store.commit()
             return reservation
 
@@ -109,6 +109,23 @@ class AvailabilityQueries:
         self.rules.validate_interval(interval, self.rules.now())
         with self.store_factory() as store:
             resource = store.load_resource(resource_id)
-            return resource.is_available and not self.rules.has_conflict(
+            return (resource.is_available
+                    and self.rules.is_within_operating_hours(interval, resource)
+                    and not self.rules.has_conflict(
                 interval, store.confirmed_intervals(resource_id),
-            )
+            ))
+
+
+class ResourceService:
+    def __init__(self, store_factory, rules=None, identity=None):
+        self.store_factory = store_factory
+        self.rules = rules or TimeRules()
+        self.identity = identity or IdentityAccess(store_factory)
+
+    def update_operating_hours(self, resource_id, actor, opens_at, closes_at):
+        self.identity.require_approver(actor)
+        self.rules.validate_operating_hours(opens_at, closes_at)
+        with self.store_factory() as store:
+            store.load_resource(resource_id, protected=True)
+            store.set_operating_hours(resource_id, opens_at, closes_at)
+            store.commit()

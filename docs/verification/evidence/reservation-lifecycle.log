@@ -1,0 +1,91 @@
+Creating test database for alias 'default' ('/tmp/sport-booking-lifecycle-20261107.sqlite3')...
+Destroying old test database for alias 'default' ('/tmp/sport-booking-lifecycle-20261107.sqlite3')...
+Found 49 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: messages, staticfiles
+  Apply all migrations: admin, auth, contenttypes, reservations, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying reservations.0001_initial... OK
+  Applying reservations.0002_remove_reservation_reservation_valid_status_and_more... OK
+  Applying reservations.0003_remove_draft_lifecycle... OK
+  Applying sessions.0001_initial...test_expiration_is_idempotent_and_preserves_terminal_states (reservations.test_architecture.PersistenceFailureTests.test_expiration_is_idempotent_and_preserves_terminal_states) ... ok
+test_failed_automatic_rejection_rolls_back_created_reservation (reservations.test_architecture.PersistenceFailureTests.test_failed_automatic_rejection_rolls_back_created_reservation) ... ok
+test_failed_commit_rolls_back (reservations.test_architecture.PersistenceFailureTests.test_failed_commit_rolls_back) ... ok
+test_failed_competitor_rejection_rolls_back_winner_and_losers (reservations.test_architecture.PersistenceFailureTests.test_failed_competitor_rejection_rolls_back_winner_and_losers) ... ok
+test_failed_save_rolls_back_and_never_reports_success (reservations.test_architecture.PersistenceFailureTests.test_failed_save_rolls_back_and_never_reports_success) ... ok
+test_invalid_resource_identifier_is_rejected_without_creating (reservations.test_architecture.PersistenceFailureTests.test_invalid_resource_identifier_is_rejected_without_creating) ... ok
+test_admin_cannot_bypass_reservation_lifecycle (reservations.tests.ReservationApiTests.test_admin_cannot_bypass_reservation_lifecycle) ... ok
+test_approval_request_does_not_block_until_staff_approves (reservations.tests.ReservationApiTests.test_approval_request_does_not_block_until_staff_approves) ... ok
+test_authentication_ownership_and_unknown_resource (reservations.tests.ReservationApiTests.test_authentication_ownership_and_unknown_resource) ... ok
+test_automatic_creation_rejects_existing_pending_requests (reservations.tests.ReservationApiTests.test_automatic_creation_rejects_existing_pending_requests) ... ok
+test_availability_checks_confirmed_only_and_half_open_edges (reservations.tests.ReservationApiTests.test_availability_checks_confirmed_only_and_half_open_edges) ... ok
+test_cancel_confirmed_releases_resource_and_rejects_repeat (reservations.tests.ReservationApiTests.test_cancel_confirmed_releases_resource_and_rejects_repeat) ... ok
+test_confirm_endpoint_removed_and_terminal_states_cannot_reopen (reservations.tests.ReservationApiTests.test_confirm_endpoint_removed_and_terminal_states_cannot_reopen) ... ok
+test_confirmation_rejects_only_overlapping_pending_same_resource (reservations.tests.ReservationApiTests.test_confirmation_rejects_only_overlapping_pending_same_resource) ... ok
+test_create_pending_checks_conflicts_and_inactive_resource (reservations.tests.ReservationApiTests.test_create_pending_checks_conflicts_and_inactive_resource) ... ok
+test_create_succeeds_and_rejects_invalid_interval (reservations.tests.ReservationApiTests.test_create_succeeds_and_rejects_invalid_interval) ... ok
+test_delayed_approval_succeeds_after_24_hours_before_start (reservations.tests.ReservationApiTests.test_delayed_approval_succeeds_after_24_hours_before_start) ... ok
+test_exact_time_limits_and_exceeded_limits (reservations.tests.ReservationApiTests.test_exact_time_limits_and_exceeded_limits) ... ok
+test_expiry_exact_deadline_on_approve_cancel_and_command (reservations.tests.ReservationApiTests.test_expiry_exact_deadline_on_approve_cancel_and_command) ... ok
+test_inactive_resource_and_invalid_availability (reservations.tests.ReservationApiTests.test_inactive_resource_and_invalid_availability) ... ok
+test_invalid_approval_decision_is_rejected_without_state_change (reservations.tests.ReservationApiTests.test_invalid_approval_decision_is_rejected_without_state_change) ... ok
+test_invalid_calendar_date_returns_error_without_creating (reservations.tests.ReservationApiTests.test_invalid_calendar_date_returns_error_without_creating) ... ok
+test_owner_can_cancel_pending_approval_but_not_after_start (reservations.tests.ReservationApiTests.test_owner_can_cancel_pending_approval_but_not_after_start) ... ok
+test_pending_request_remains_actionable_after_24_hours_until_start (reservations.tests.ReservationApiTests.test_pending_request_remains_actionable_after_24_hours_until_start) ... ok
+test_staff_can_reject_but_non_staff_cannot_decide (reservations.tests.ReservationApiTests.test_staff_can_reject_but_non_staff_cannot_decide) ... ok
+test_approval_resource_waits_for_staff_decision (reservations.test_portal.PortalTests.test_approval_resource_waits_for_staff_decision) ... ok
+test_availability_check_does_not_create_reservation (reservations.test_portal.PortalTests.test_availability_check_does_not_create_reservation) ... ok
+test_booking_creation_confirms_in_one_step (reservations.test_portal.PortalTests.test_booking_creation_confirms_in_one_step) ... ok
+test_conflicting_web_creation_does_not_create_second_record (reservations.test_portal.PortalTests.test_conflicting_web_creation_does_not_create_second_record) ... ok
+test_customer_can_register_and_is_logged_in (reservations.test_portal.PortalTests.test_customer_can_register_and_is_logged_in) ... ok
+test_customer_cannot_cancel_another_users_reservation (reservations.test_portal.PortalTests.test_customer_cannot_cancel_another_users_reservation) ... ok
+test_home_displays_public_venue_catalog (reservations.test_portal.PortalTests.test_home_displays_public_venue_catalog) ... ok
+test_non_staff_cannot_approve_pending_reservation (reservations.test_portal.PortalTests.test_non_staff_cannot_approve_pending_reservation) ... ok
+test_staff_approval_rejects_competing_web_request (reservations.test_portal.PortalTests.test_staff_approval_rejects_competing_web_request) ... ok
+test_unknown_booking_action_does_not_create_reservation (reservations.test_portal.PortalTests.test_unknown_booking_action_does_not_create_reservation) ... ok
+test_create_and_reload_all_fields_and_relations (reservations.tests.ReservationPersistenceTests.test_create_and_reload_all_fields_and_relations) ... ok
+test_database_rejects_unknown_status (reservations.tests.ReservationPersistenceTests.test_database_rejects_unknown_status) ... ok
+test_database_rejects_zero_or_negative_duration (reservations.tests.ReservationPersistenceTests.test_database_rejects_zero_or_negative_duration) ... ok
+test_database_requires_user_and_resource (reservations.tests.ReservationPersistenceTests.test_database_requires_user_and_resource) ... ok
+test_reservation_protects_related_records_from_deletion (reservations.tests.ReservationPersistenceTests.test_reservation_protects_related_records_from_deletion) ... ok
+test_status_updates_survive_reload (reservations.tests.ReservationPersistenceTests.test_status_updates_survive_reload) ... ok
+test_entry_points_do_not_access_orm_or_mutate_reservation_state (reservations.test_architecture.ArchitectureDependencyTests.test_entry_points_do_not_access_orm_or_mutate_reservation_state) ... ok
+test_only_allowed_dependencies_are_used_by_logical_parts (reservations.test_architecture.ArchitectureDependencyTests.test_only_allowed_dependencies_are_used_by_logical_parts) ... ok
+test_approve_racing_cancel_finishes_cancelled (reservations.test_concurrency.ReservationConcurrencyTests.test_approve_racing_cancel_finishes_cancelled) ... ok
+test_conflicting_approvals_commit_only_one_allocation (reservations.test_concurrency.ReservationConcurrencyTests.test_conflicting_approvals_commit_only_one_allocation) ... ok
+test_conflicting_creations_commit_only_one_allocation (reservations.test_concurrency.ReservationConcurrencyTests.test_conflicting_creations_commit_only_one_allocation) ... ok
+test_create_racing_approval_commits_only_one_allocation (reservations.test_concurrency.ReservationConcurrencyTests.test_create_racing_approval_commits_only_one_allocation) ... ok
+test_expiration_process_racing_approval_uses_shared_database (reservations.test_concurrency.ReservationConcurrencyTests.test_expiration_process_racing_approval_uses_shared_database) ... ok
+test_legacy_drafts_are_preserved_as_cancelled (reservations.test_migrations.ReservationLifecycleMigrationTests.test_legacy_drafts_are_preserved_as_cancelled) ... ok
+
+----------------------------------------------------------------------
+Ran 49 tests in 1.098s
+
+OK
+Destroying test database for alias 'default' ('/tmp/sport-booking-lifecycle-20261107.sqlite3')...
+ OK
+System check identified no issues (0 silenced).
+Expired 0 reservation(s).
+Expired 1 reservation(s).
+Expired 1 reservation(s).
+Expired 0 reservation(s).

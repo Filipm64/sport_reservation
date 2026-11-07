@@ -4,7 +4,7 @@ from .identity import IdentityAccess
 from .persistence import DjangoDataStore
 from .portal import PortalQueries
 from .rules import TimeRules
-from .services import AvailabilityQueries, ReservationService
+from .services import AvailabilityQueries, ReservationService, ResourceService
 
 
 def build_service():
@@ -18,4 +18,8 @@ def build_endpoint():
 
 
 def build_portal_queries():
-    return PortalQueries(DjangoDataStore)
+    return PortalQueries(DjangoDataStore, TimeRules())
+
+
+def build_resource_service():
+    return ResourceService(DjangoDataStore, TimeRules(), IdentityAccess(DjangoDataStore))

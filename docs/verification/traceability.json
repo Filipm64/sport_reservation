@@ -1,0 +1,791 @@
+[
+  {
+    "id": "REQ-01",
+    "title": "Vytvoření rezervace",
+    "page": "docs/requirements/create-reservation.md",
+    "rules": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-06",
+      "BR-07",
+      "BR-08",
+      "BR-09"
+    ],
+    "design": [
+      "docs/design/domain-model.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService.create"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.validate_interval"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_create_succeeds_and_rejects_invalid_interval"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_exact_time_limits_and_exceeded_limits"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_authentication_ownership_and_unknown_resource"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_invalid_calendar_date_returns_error_without_creating"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_create_pending_checks_conflicts_and_inactive_resource"
+      }
+    ]
+  },
+  {
+    "id": "REQ-02",
+    "title": "Kontrola dostupnosti",
+    "page": "docs/requirements/check-availability.md",
+    "rules": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-07",
+      "BR-09"
+    ],
+    "design": [
+      "docs/architecture/static-structure.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "AvailabilityQueries.check"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.has_conflict"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_availability_checks_confirmed_only_and_half_open_edges"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_approval_request_does_not_block_until_staff_approves"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_inactive_resource_and_invalid_availability"
+      }
+    ]
+  },
+  {
+    "id": "REQ-03",
+    "title": "Automatické potvrzení při vytvoření",
+    "page": "docs/requirements/confirm-reservation.md",
+    "rules": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-06",
+      "BR-08",
+      "BR-09"
+    ],
+    "design": [
+      "docs/design/reservation-lifecycle.md",
+      "docs/design/design-classes.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService.create"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService._decide_confirmation"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService._reject_competing_requests"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_create_succeeds_and_rejects_invalid_interval"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_create_pending_checks_conflicts_and_inactive_resource"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_automatic_creation_rejects_existing_pending_requests"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_confirm_endpoint_removed_and_terminal_states_cannot_reopen"
+      }
+    ]
+  },
+  {
+    "id": "REQ-04",
+    "title": "Zabránění dvojí rezervaci",
+    "page": "docs/requirements/prevent-double-booking.md",
+    "rules": [
+      "BR-02",
+      "BR-06",
+      "BR-08"
+    ],
+    "design": [
+      "docs/architecture/decisions/ADR-001-reservation-coordination.md",
+      "docs/design/approval-sequence.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService._decide_confirmation"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_concurrency.py",
+        "symbol": "ReservationConcurrencyTests.test_conflicting_creations_commit_only_one_allocation"
+      },
+      {
+        "path": "sport_booking/reservations/test_concurrency.py",
+        "symbol": "ReservationConcurrencyTests.test_conflicting_approvals_commit_only_one_allocation"
+      },
+      {
+        "path": "sport_booking/reservations/test_concurrency.py",
+        "symbol": "ReservationConcurrencyTests.test_create_racing_approval_commits_only_one_allocation"
+      },
+      {
+        "path": "sport_booking/reservations/test_architecture.py",
+        "symbol": "PersistenceFailureTests.test_failed_competitor_rejection_rolls_back_winner_and_losers"
+      },
+      {
+        "path": "sport_booking/reservations/test_architecture.py",
+        "symbol": "PersistenceFailureTests.test_failed_automatic_rejection_rolls_back_created_reservation"
+      }
+    ]
+  },
+  {
+    "id": "REQ-05",
+    "title": "Zrušení rezervace",
+    "page": "docs/requirements/cancel-reservation.md",
+    "rules": [
+      "BR-02",
+      "BR-05",
+      "BR-06",
+      "BR-07"
+    ],
+    "design": [
+      "docs/design/reservation-lifecycle.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService.cancel"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.validate_cancellation"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_cancel_confirmed_releases_resource_and_rejects_repeat"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_owner_can_cancel_pending_approval_but_not_after_start"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_expiry_exact_deadline_on_approve_cancel_and_command"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_pending_request_remains_actionable_after_24_hours_until_start"
+      },
+      {
+        "path": "sport_booking/reservations/test_concurrency.py",
+        "symbol": "ReservationConcurrencyTests.test_approve_racing_cancel_finishes_cancelled"
+      }
+    ]
+  },
+  {
+    "id": "REQ-06",
+    "title": "Schválení rezervace",
+    "page": "docs/requirements/approve-reservation.md",
+    "rules": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-06",
+      "BR-07",
+      "BR-08",
+      "BR-09"
+    ],
+    "design": [
+      "docs/design/approval-sequence.md",
+      "docs/design/reservation-lifecycle.md",
+      "docs/design/detailed-design.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService.approve"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService._expire_if_due"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService.expire_due"
+      },
+      {
+        "path": "sport_booking/reservations/identity.py",
+        "symbol": "IdentityAccess.require_approver"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService._reject_competing_requests"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.overlapping_pending_ids"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_delayed_approval_succeeds_after_24_hours_before_start"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_staff_can_reject_but_non_staff_cannot_decide"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_expiry_exact_deadline_on_approve_cancel_and_command"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_pending_request_remains_actionable_after_24_hours_until_start"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_confirmation_rejects_only_overlapping_pending_same_resource"
+      },
+      {
+        "path": "sport_booking/reservations/tests.py",
+        "symbol": "ReservationApiTests.test_invalid_approval_decision_is_rejected_without_state_change"
+      }
+    ]
+  },
+  {
+    "id": "REQ-07",
+    "title": "Veřejný katalog sportovišť",
+    "page": "docs/requirements/public-catalog.md",
+    "rules": [],
+    "design": [
+      "docs/design/web-portal.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "home"
+      },
+      {
+        "path": "sport_booking/reservations/portal.py",
+        "symbol": "PortalQueries.resources"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.list_resources"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_public_catalog_shows_metadata_and_operating_availability"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_empty_public_catalog_is_displayed_without_error"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_guest_and_customer_cannot_see_staff_queue"
+      }
+    ]
+  },
+  {
+    "id": "REQ-08",
+    "title": "Registrace zákazníka",
+    "page": "docs/requirements/customer-registration.md",
+    "rules": [],
+    "design": [
+      "docs/design/web-portal.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "RegistrationForm"
+      },
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "register"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_registration_creates_only_customer_and_authenticates"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_invalid_registration_does_not_create_or_authenticate_user"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_authenticated_user_cannot_create_second_account"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_account_forms_require_csrf"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_account_forms_work_with_valid_csrf_tokens"
+      }
+    ]
+  },
+  {
+    "id": "REQ-09",
+    "title": "Přihlášení a odhlášení",
+    "page": "docs/requirements/login-logout.md",
+    "rules": [],
+    "design": [
+      "docs/design/web-portal.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "PortalLoginView"
+      },
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "PortalLogoutView"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_login_accepts_active_customer_and_staff"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_login_rejects_invalid_credentials_and_inactive_account"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_login_does_not_redirect_to_untrusted_host"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_logout_requires_post_and_ends_session"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_account_forms_require_csrf"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_account_forms_work_with_valid_csrf_tokens"
+      }
+    ]
+  },
+  {
+    "id": "REQ-10",
+    "title": "Zobrazení vlastních rezervací",
+    "page": "docs/requirements/my-reservations.md",
+    "rules": [
+      "BR-05",
+      "BR-07"
+    ],
+    "design": [
+      "docs/design/web-portal.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "home"
+      },
+      {
+        "path": "sport_booking/reservations/portal.py",
+        "symbol": "PortalQueries.reservations_for_user"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.list_reservations"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore._reservation_listings"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.display_status"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_customer_sees_only_own_reservations_in_all_five_states"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_staff_personal_list_still_contains_only_own_reservations"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_customer_with_no_reservations_sees_empty_state"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_guest_and_customer_cannot_see_staff_queue"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_personal_list_displays_effective_expiry_without_writing_database"
+      }
+    ]
+  },
+  {
+    "id": "REQ-11",
+    "title": "Přehled čekajících žádostí správce",
+    "page": "docs/requirements/staff-approval-queue.md",
+    "rules": [
+      "BR-07"
+    ],
+    "design": [
+      "docs/design/web-portal.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "home"
+      },
+      {
+        "path": "sport_booking/reservations/portal.py",
+        "symbol": "PortalQueries.pending_reservations"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.list_pending_reservations"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_guest_and_customer_cannot_see_staff_queue"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_staff_queue_shows_only_pending_before_start_without_mutation"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal_requirements.py",
+        "symbol": "PortalRequirementTests.test_staff_queue_displays_empty_state"
+      },
+      {
+        "path": "sport_booking/reservations/test_portal.py",
+        "symbol": "PortalTests.test_non_staff_cannot_approve_pending_reservation"
+      }
+    ]
+  },
+  {
+    "id": "REQ-12",
+    "title": "Výběr rezervace z hodinového rozvrhu",
+    "page": "docs/requirements/hourly-schedule.md",
+    "rules": [
+      "BR-01",
+      "BR-02",
+      "BR-03",
+      "BR-04",
+      "BR-07",
+      "BR-09"
+    ],
+    "design": [
+      "docs/design/hourly-schedule.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "ScheduleFilterForm"
+      },
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "BookingForm.clean"
+      },
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "home"
+      },
+      {
+        "path": "sport_booking/reservations/portal.py",
+        "symbol": "PortalQueries.weekly_schedule"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.weekly_blocks"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.validate_interval"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService.create"
+      },
+      {
+        "path": "sport_booking/reservations/templates/reservations/home.html"
+      },
+      {
+        "path": "sport_booking/reservations/static/reservations/schedule.js"
+      },
+      {
+        "path": "sport_booking/reservations/static/reservations/app.css"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_grid_renders_hour_blocks_and_manual_option"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_one_or_two_blocks_create_exact_one_or_two_hour_reservation"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_three_nonadjacent_duplicate_and_unknown_blocks_are_rejected"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_confirmed_partial_overlap_blocks_whole_hour_and_edges_remain_free"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_pending_other_resource_and_cancelled_do_not_block"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_approval_required_resource_creates_pending_from_blocks"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_stale_schedule_does_not_bypass_atomic_conflict_check"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_invalid_resource_and_day_do_not_create_reservation"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_past_and_beyond_thirty_days_are_disabled"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_availability_from_blocks_is_read_only"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_manual_input_keeps_two_hour_server_limit"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_guest_cannot_submit_grid_booking"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "ScheduleTests.test_slot_interval_is_derived_on_server_not_client_values"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "HourBlockRuleTests.test_daylight_saving_days_have_real_hour_blocks"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "HourBlockRuleTests.test_two_hour_limit_uses_elapsed_time_across_dst"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "HourBlockRuleTests.test_unavailable_resource_disables_all_blocks"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_week_grid_excludes_closed_rows_and_disables_partial_hours"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_week_navigation_stays_inside_booking_horizon"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_week_selection_is_limited_to_one_day"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_block_from_other_day_in_same_week_creates_correct_date"
+      },
+      {
+        "path": "sport_booking/reservations/test_schedule.py",
+        "symbol": "HourBlockRuleTests.test_week_table_represents_dst_gap_and_repeated_hour"
+      }
+    ]
+  },
+  {
+    "id": "REQ-13",
+    "title": "Nastavení a vynucování provozní doby",
+    "page": "docs/requirements/operating-hours.md",
+    "rules": [
+      "BR-01",
+      "BR-03",
+      "BR-04",
+      "BR-09"
+    ],
+    "design": [
+      "docs/design/hourly-schedule.md"
+    ],
+    "implementation": [
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "OperatingHoursForm"
+      },
+      {
+        "path": "sport_booking/reservations/web_views.py",
+        "symbol": "update_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ResourceService.update_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService._decide_confirmation"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "AvailabilityQueries.check"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.validate_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.is_within_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.set_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/models.py",
+        "symbol": "Resource.clean"
+      }
+    ],
+    "tests": [
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_api_creation_rejects_outside_hours_for_both_resource_types"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_exact_opening_and_closing_boundaries_are_allowed"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_availability_is_unavailable_outside_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_manual_web_creation_cannot_bypass_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_week_grid_excludes_closed_rows_and_disables_partial_hours"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_week_navigation_stays_inside_booking_horizon"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_week_selection_is_limited_to_one_day"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_block_from_other_day_in_same_week_creates_correct_date"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_staff_can_update_operating_hours_without_admin_model_permissions"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_customer_and_guest_cannot_update_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_invalid_operating_hours_do_not_change_configuration"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_operating_hours_update_requires_post_and_csrf"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_approval_rechecks_changed_operating_hours"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_changing_operating_hours_does_not_cancel_existing_confirmations"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_api_uses_local_operating_time_regardless_of_input_offset"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_operating_hours_update_rolls_back_when_commit_fails"
+      },
+      {
+        "path": "sport_booking/reservations/test_operating_hours.py",
+        "symbol": "OperatingHoursTests.test_partial_hour_manual_interval_can_fit_and_overnight_is_rejected"
+      }
+    ]
+  }
+]

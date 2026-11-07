@@ -17,11 +17,6 @@ def check_availability(request):
 
 
 @require_POST
-def confirm_reservation(request, reservation_id):
-    return endpoint.confirm(request, reservation_id)
-
-
-@require_POST
 def approve_reservation(request, reservation_id):
     return endpoint.approve(request, reservation_id)
 

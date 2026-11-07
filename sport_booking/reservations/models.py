@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.core.exceptions import ValidationError
 
 
 class Sport(models.Model):
@@ -18,13 +19,17 @@ class Resource(models.Model):
     is_available = models.BooleanField(default=True)
     requires_approval = models.BooleanField(default=False)
 
+    def clean(self):
+        super().clean()
+        if self.opens_at is not None and self.closes_at is not None and self.opens_at >= self.closes_at:
+            raise ValidationError({'closes_at': 'Čas zavření musí být později než čas otevření.'})
+
     def __str__(self):
         return self.name
 
 
 class Reservation(models.Model):
     class Status(models.TextChoices):
-        DRAFT = 'DRAFT', 'Draft'
         PENDING_APPROVAL = 'PENDING_APPROVAL', 'Pending approval'
         CONFIRMED = 'CONFIRMED', 'Confirmed'
         REJECTED = 'REJECTED', 'Rejected'
@@ -35,7 +40,7 @@ class Reservation(models.Model):
     resource = models.ForeignKey(Resource, on_delete=models.PROTECT)
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
-    status = models.CharField(max_length=20, choices=Status, default=Status.DRAFT)
+    status = models.CharField(max_length=20, choices=Status)
     created_at = models.DateTimeField(auto_now_add=True)
     approval_requested_at = models.DateTimeField(null=True, blank=True)
 
@@ -47,7 +52,7 @@ class Reservation(models.Model):
             ),
             models.CheckConstraint(
                 condition=models.Q(status__in=[
-                    'DRAFT', 'PENDING_APPROVAL', 'CONFIRMED',
+                    'PENDING_APPROVAL', 'CONFIRMED',
                     'REJECTED', 'EXPIRED', 'CANCELLED',
                 ]),
                 name='reservation_valid_status',

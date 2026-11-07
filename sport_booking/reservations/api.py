@@ -64,7 +64,7 @@ class ReservationEndpoint:
             status = {
                 'unauthenticated': 401, 'forbidden': 403, 'not_found': 404,
                 'invalid_input': 400, 'invalid_interval': invalid_interval_status,
-                'conflict': 409, 'expired': 409,
+                'conflict': 409, 'expired': 409, 'outside_hours': 409,
             }[error.code]
             body = {'error': str(error)}
             if error.state is not None:
@@ -87,12 +87,6 @@ class ReservationEndpoint:
             )
             return JsonResponse({'availability': 'AVAILABLE' if available else 'UNAVAILABLE'})
         return self._run(operation, invalid_interval_status=400)
-
-    def confirm(self, request, reservation_id):
-        def operation():
-            actor = self.service.identity.authenticate(request.user)
-            return self._result(self.service.confirm(reservation_id, actor))
-        return self._run(operation)
 
     def approve(self, request, reservation_id):
         def operation():

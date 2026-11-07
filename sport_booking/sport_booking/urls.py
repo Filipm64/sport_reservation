@@ -31,13 +31,9 @@ urlpatterns = [
         web_views.reservation_action,
         name='reservation-action',
     ),
+    path('sportoviste/<int:resource_id>/provozni-doba/', web_views.update_operating_hours, name='update-operating-hours'),
     path('api/reservations/', views.create_reservation, name='create-reservation'),
     path('api/availability/', views.check_availability, name='check-availability'),
-    path(
-        'api/reservations/<int:reservation_id>/confirm/',
-        views.confirm_reservation,
-        name='confirm-reservation',
-    ),
     path(
         'api/reservations/<int:reservation_id>/approve/',
         views.approve_reservation,

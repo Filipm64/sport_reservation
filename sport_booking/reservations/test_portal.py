@@ -45,7 +45,7 @@ class PortalTests(TestCase):
             'ends_at': (start + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M'),
         }
 
-    def create_draft(self, resource=None):
+    def create_booking(self, resource=None):
         self.client.force_login(self.user)
         response = self.client.post('/', {
             **self.booking_data(resource),
@@ -76,7 +76,7 @@ class PortalTests(TestCase):
             str(get_user_model().objects.get(username='new-customer').pk),
         )
 
-    def test_booking_creation_and_confirmation_follow_reservation_lifecycle(self):
+    def test_booking_creation_confirms_in_one_step(self):
         self.client.force_login(self.user)
         created = self.client.post('/', {
             **self.booking_data(),
@@ -84,19 +84,12 @@ class PortalTests(TestCase):
         })
         self.assertRedirects(created, '/')
         reservation = Reservation.objects.get(user=self.user)
-        self.assertEqual(reservation.status, Reservation.Status.DRAFT)
-
-        confirmed = self.client.post(
-            f'/rezervace/{reservation.pk}/confirm/',
-        )
-
-        self.assertRedirects(confirmed, '/')
-        reservation.refresh_from_db()
         self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)
 
+        self.assertNotContains(self.client.get('/'), f'/rezervace/{reservation.pk}/confirm/')
+
     def test_approval_resource_waits_for_staff_decision(self):
-        reservation = self.create_draft(self.approval_resource)
-        self.client.post(f'/rezervace/{reservation.pk}/confirm/')
+        reservation = self.create_booking(self.approval_resource)
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, Reservation.Status.PENDING_APPROVAL)
 
@@ -108,8 +101,7 @@ class PortalTests(TestCase):
         self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)
 
     def test_non_staff_cannot_approve_pending_reservation(self):
-        reservation = self.create_draft(self.approval_resource)
-        self.client.post(f'/rezervace/{reservation.pk}/confirm/')
+        reservation = self.create_booking(self.approval_resource)
 
         response = self.client.post(f'/rezervace/{reservation.pk}/approve/')
 
@@ -118,7 +110,7 @@ class PortalTests(TestCase):
         self.assertEqual(reservation.status, Reservation.Status.PENDING_APPROVAL)
 
     def test_customer_cannot_cancel_another_users_reservation(self):
-        reservation = self.create_draft()
+        reservation = self.create_booking()
         other_user = get_user_model().objects.create_user(username='other')
         reservation.user = other_user
         reservation.save(update_fields=('user',))
@@ -126,7 +118,7 @@ class PortalTests(TestCase):
         self.client.post(f'/rezervace/{reservation.pk}/cancel/')
 
         reservation.refresh_from_db()
-        self.assertEqual(reservation.status, Reservation.Status.DRAFT)
+        self.assertEqual(reservation.status, Reservation.Status.CONFIRMED)
 
     def test_availability_check_does_not_create_reservation(self):
         self.client.force_login(self.user)
@@ -150,3 +142,21 @@ class PortalTests(TestCase):
 
         self.assertRedirects(response, '/')
         self.assertFalse(Reservation.objects.exists())
+
+    def test_staff_approval_rejects_competing_web_request(self):
+        self.client.force_login(self.user)
+        for _ in range(2):
+            self.client.post('/', {**self.booking_data(self.approval_resource), 'action': 'create'})
+        first, second = Reservation.objects.order_by('pk')
+        self.client.force_login(self.staff)
+        self.assertRedirects(self.client.post(f'/rezervace/{first.pk}/approve/'), '/')
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual(first.status, 'CONFIRMED')
+        self.assertEqual(second.status, 'REJECTED')
+
+    def test_conflicting_web_creation_does_not_create_second_record(self):
+        self.create_booking()
+        self.client.post('/', {**self.booking_data(), 'action': 'create'})
+        self.assertEqual(Reservation.objects.count(), 1)
+        self.assertEqual(Reservation.objects.get().status, 'CONFIRMED')

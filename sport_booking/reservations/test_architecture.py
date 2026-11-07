@@ -74,7 +74,7 @@ class ArchitectureDependencyTests(SimpleTestCase):
             'identity': {'domain'}, 'persistence': {'models', 'domain'},
             'services': {'domain', 'identity', 'persistence', 'rules'},
             'api': {'domain', 'services'}, 'views': {'wiring'},
-            'portal': set(),
+            'portal': {'rules'},
             'wiring': {'api', 'identity', 'persistence', 'portal', 'rules', 'services'},
         }
         for module, allowed in allowed_local.items():
@@ -95,7 +95,7 @@ class ArchitectureDependencyTests(SimpleTestCase):
             node.module for node in ast.walk(portal_tree)
             if isinstance(node, ast.ImportFrom) and node.level
         }
-        self.assertEqual(portal_imports, set())
+        self.assertEqual(portal_imports, {'rules'})
         service_tree = ast.parse((root / 'services.py').read_text())
         self.assertNotIn('DjangoDataStore', {
             name.id for name in ast.walk(service_tree) if isinstance(name, ast.Name)
@@ -111,7 +111,6 @@ class PersistenceFailureTests(TestCase):
     interval = ReservationApiTests.interval
     create = ReservationApiTests.create
     def test_failed_save_rolls_back_and_never_reports_success(self):
-        reservation_id = self.create().json()['id']
         original_save = DjangoDataStore.save
 
         def fail_after_save(store, reservation):
@@ -120,26 +119,59 @@ class PersistenceFailureTests(TestCase):
 
         with patch.object(DjangoDataStore, 'save', fail_after_save):
             with self.assertRaises(DatabaseError):
-                self.client.post(f'/api/reservations/{reservation_id}/confirm/')
-        self.assertEqual(Reservation.objects.get(pk=reservation_id).status, 'DRAFT')
+                self.create()
+        self.assertFalse(Reservation.objects.exists())
         self.assertFalse(transaction.get_rollback())
-        self.assertEqual(self.client.post(
-            f'/api/reservations/{reservation_id}/confirm/').status_code, 200)
+        self.assertEqual(self.create().status_code, 201)
 
     def test_failed_commit_rolls_back(self):
-        reservation_id = self.create().json()['id']
         with patch.object(DjangoDataStore, 'commit', side_effect=DatabaseError('commit failure')):
             with self.assertRaises(DatabaseError):
-                self.client.post(f'/api/reservations/{reservation_id}/confirm/')
-        self.assertEqual(Reservation.objects.get(pk=reservation_id).status, 'DRAFT')
+                self.create()
+        self.assertFalse(Reservation.objects.exists())
+
+    def test_failed_competitor_rejection_rolls_back_winner_and_losers(self):
+        first = self.create(resource=self.approval_resource).json()['id']
+        second = self.create(resource=self.approval_resource).json()['id']
+        original_save = DjangoDataStore.save
+
+        def fail_after_rejection(store, reservation):
+            original_save(store, reservation)
+            if reservation.status == 'REJECTED':
+                raise DatabaseError('competitor rejection failed')
+
+        from .domain import User
+        from .wiring import build_service
+        with patch.object(DjangoDataStore, 'save', fail_after_rejection):
+            with self.assertRaises(DatabaseError):
+                build_service().approve(first, User(self.staff.pk, True))
+        self.assertEqual(list(Reservation.objects.order_by('pk').values_list('status', flat=True)),
+                         ['PENDING_APPROVAL', 'PENDING_APPROVAL'])
+        self.assertNotEqual(first, second)
+
+    def test_failed_automatic_rejection_rolls_back_created_reservation(self):
+        pending = self.create(resource=self.approval_resource).json()['id']
+        self.approval_resource.requires_approval = False
+        self.approval_resource.save()
+        original_save = DjangoDataStore.save
+
+        def fail_after_rejection(store, reservation):
+            original_save(store, reservation)
+            if reservation.status == 'REJECTED':
+                raise DatabaseError('automatic rejection failed')
+
+        with patch.object(DjangoDataStore, 'save', fail_after_rejection):
+            with self.assertRaises(DatabaseError):
+                self.create(resource=self.approval_resource)
+        self.assertEqual(Reservation.objects.count(), 1)
+        self.assertEqual(Reservation.objects.get(pk=pending).status, 'PENDING_APPROVAL')
 
     def test_expiration_is_idempotent_and_preserves_terminal_states(self):
         from .wiring import build_service
         reservation_id = self.create(resource=self.approval_resource).json()['id']
-        self.client.post(f'/api/reservations/{reservation_id}/confirm/')
         now = timezone.now()
         Reservation.objects.filter(pk=reservation_id).update(
-            approval_requested_at=now - timedelta(hours=24),
+            starts_at=now, ends_at=now + timedelta(hours=1),
         )
         with patch('reservations.rules.TimeRules.now', return_value=now):
             self.assertEqual(build_service().expire_due(), 1)
