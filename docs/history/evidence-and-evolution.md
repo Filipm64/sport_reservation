@@ -1,5 +1,22 @@
 # Evidence and evolution
 
+## C08 — baseline před navrženou změnou storno politiky
+
+Dne 8. 11. 2026 byla zachycena aplikační baseline
+`cd3c4ddc8dbc47d83483441c51b8d8a7ce87281c` a specifikovány dva případy
+současného BR-05 před jejich spuštěním. Oba byly následně provedené přes
+API se skutečnou SQLite persistencí a nezávislým čtením committed stavu:
+sekundu před začátkem zrušení uspělo, přesně při začátku bylo odmítnuté.
+**2 testy prošly**. [Baseline, postup, výsledky a meze důkazu](../verification/c08-cancellation-baseline.md).
+
+Následně zadavatel 8. 11. 2026 přijal dvouhodinovou storno lhůtu pro nové
+potvrzené rezervace včetně přesné hranice, zachování rušení čekajících
+žádostí před začátkem a původních podmínek existujících rezervací.
+[C08 — Change Request](../requirements/C08-change-request.md) obsahuje AC,
+dopady, dvě technické varianty a předávku do C09. Doporučená varianta A
+ukládá verzi politiky k rezervaci; review spolužákem a konečný výběr varianty
+zatím nejsou provedené. Aplikační pravidla zůstávají beze změny.
+
 ## C01 Engineering Spike
 
 ### Question

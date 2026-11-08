@@ -1,0 +1,60 @@
+Application baseline: cd3c4ddc8dbc47d83483441c51b8d8a7ce87281c
+Verification additions: docs/verification/c08-cancellation-baseline.md, sport_booking/reservations/test_c08_baseline.py
+Command: SPORT_BOOKING_TEST_DB=/tmp/sport-booking-c08-c1af86ed985146848d0f06ab9cdf2491.sqlite3 .venv/bin/python sport_booking/manage.py test reservations.test_c08_baseline --noinput --verbosity 2
+
+Creating test database for alias 'default' ('/tmp/sport-booking-c08-c1af86ed985146848d0f06ab9cdf2491.sqlite3')...
+Destroying old test database for alias 'default' ('/tmp/sport-booking-c08-c1af86ed985146848d0f06ab9cdf2491.sqlite3')...
+Found 2 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: messages, staticfiles
+  Apply all migrations: admin, auth, contenttypes, reservations, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying reservations.0001_initial... OK
+  Applying reservations.0002_remove_reservation_reservation_valid_status_and_more... OK
+  Applying reservations.0003_remove_draft_lifecycle... OK
+  Applying sessions.0001_initial...test_cancel_one_second_before_start (reservations.test_c08_baseline.CancellationBaselineTests.test_cancel_one_second_before_start) ...  OK
+System check identified no issues (0 silenced).
+
+TC-C08-01: create_at=2026-11-09T09:00:00+00:00, cancel_at=2026-11-10T09:59:59+00:00
+Step 1: create HTTP 201: {'id': 1, 'status': 'CONFIRMED', 'resource_id': 1, 'starts_at': '2026-11-10T10:00:00+00:00', 'ends_at': '2026-11-10T11:00:00+00:00'}
+Independent committed SQL read: [(1, 1, 1, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CONFIRMED')]
+Step 3: cancel HTTP 200: {'id': 1, 'status': 'CANCELLED', 'resource_id': 1, 'starts_at': '2026-11-10T10:00:00+00:00', 'ends_at': '2026-11-10T11:00:00+00:00'}
+Independent committed SQL read: [(1, 1, 1, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CANCELLED')]
+TC-C08-01: PASS
+ok
+test_refuse_cancel_at_start (reservations.test_c08_baseline.CancellationBaselineTests.test_refuse_cancel_at_start) ... 
+TC-C08-02: create_at=2026-11-09T09:00:00+00:00, cancel_at=2026-11-10T10:00:00+00:00
+Step 1: create HTTP 201: {'id': 2, 'status': 'CONFIRMED', 'resource_id': 2, 'starts_at': '2026-11-10T10:00:00+00:00', 'ends_at': '2026-11-10T11:00:00+00:00'}
+Independent committed SQL read: [(2, 2, 2, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CONFIRMED')]
+Step 3: cancel HTTP 409: {'error': 'Reservation has already started.'}
+Independent committed SQL read: [(2, 2, 2, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CONFIRMED')]
+TC-C08-02: PASS
+ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.045s
+
+OK
+Destroying test database for alias 'default' ('/tmp/sport-booking-c08-c1af86ed985146848d0f06ab9cdf2491.sqlite3')...
+
+Exit code: 0

@@ -2,6 +2,10 @@
 
 [Přehled dokumentace](../README.md) · [Účel, aktéři a rozsah](overview.md) · [Business pravidla](business-rules.md)
 
+[C08 — Change Request: storno politika rezervací](C08-change-request.md)
+zachycuje přijatý záměr pro C09. Nová politika zatím není implementovaná;
+níže uvedené požadavky nadále popisují současnou aplikaci.
+
 | ID | Požadavek | Implementace, návrh a testy |
 | --- | --- | --- |
 | REQ-01 / OP-01 | [Vytvoření rezervace](create-reservation.md) | [Vazby](../verification/coverage.md#req-01) |
