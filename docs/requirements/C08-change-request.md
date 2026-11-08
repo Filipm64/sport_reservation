@@ -1,220 +1,238 @@
 # C08 — Change Request: storno politika rezervací
 
-**ID:** CR-C08-01 · **Cvičení:** C08 — Controlled Change
+**Číslo změny:** CR-C08-01 · **Datum:** 8. 11. 2026
 
-**Stav:** ACCEPT pro business pravidla (souhlas zadavatele v tomto chatu
-8. 11. 2026); technická varianta A je doporučená k review.
-Implementace: **PLANNED**, nové chování: **NOT VERIFIED**.
-Peer review spolužákem: **NOT DONE**. C08 zatím není celé dokončené.
+Pravidla změny jsou odsouhlasená. Tento dokument popisuje, co chceme
+změnit, proč, kterých částí aplikace se to dotkne a jak výsledek ověříme.
+Nové chování zatím není naprogramované. Záznam současného stavu a výsledky
+jeho testů jsou v [ověření C08](../verification/c08-cancellation-baseline.md).
 
-## 1. Zdroj, potřeba a výchozí stav
+## 1. Proč změnu chceme a jak aplikace funguje dnes
 
-Zdroj: návrh omezení pozdního storna, který zadavatel projektu přijal
-8. 11. 2026. Business potřeba: provozovatel potřebuje čas znovu nabídnout
-uvolněný termín; dnešní zrušení těsně před začátkem tuto možnost omezuje.
-Jde o projektový požadavek, nikoliv povinnou funkci předepsanou C08.
+Dnes může vlastník zrušit potvrzenou rezervaci kdykoliv před jejím
+začátkem, třeba i sekundu předem. Provozovatel tak nemusí mít čas nabídnout
+uvolněný termín někomu jinému. Proto jsme se rozhodli zavést dvouhodinový
+předstih pro rušení nových potvrzených rezervací.
 
-Aplikační baseline: `cd3c4ddc8dbc47d83483441c51b8d8a7ce87281c`.
-Platný kontrakt této verze je [REQ-05 / OP-04](cancel-reservation.md),
-[BR-05](business-rules.md#br-05), navazující BR-02, BR-06, BR-07, BR-08
-a [REQ-10](my-reservations.md). Vlastník smí před začátkem zrušit
-PENDING_APPROVAL i CONFIRMED; záznam se nemaže.
+Návrh přijal zadavatel projektu 8. 11. 2026. Konkrétní funkci jsme si
+zvolili pro náš projekt; zadání C08 požaduje postup posouzení změny.
 
-Architektura: [ADR-01](../architecture/decisions/ADR-001-reservation-coordination.md),
-společná `ReservationService`, transakční `DjangoDataStore`.
-Runtime, konfigurace, schéma `0003_remove_draft_lifecycle`, přesná data,
-dva krokované případy a jejich skutečné provedení jsou v
-[baseline C08](../verification/c08-cancellation-baseline.md).
-**TC-C08-01 i TC-C08-02: PASS**, včetně nezávislého čtení committed dat.
-[Úplný log](../verification/evidence/c08-cancellation-baseline.log).
-Tato evidence platí pro původní kontrakt, nikoliv pro navržené chování.
+Výchozí verze aplikace je commit
+`cd3c4ddc8dbc47d83483441c51b8d8a7ce87281c`. Její současná pravidla popisují
+[REQ-05 — Zrušení rezervace](cancel-reservation.md),
+[BR-05 — Zrušení](business-rules.md#br-05) a
+[REQ-10 — Vlastní rezervace](my-reservations.md).
+Rozhodování zajišťuje společná služba `ReservationService`, jak popisuje
+[ADR-01](../architecture/decisions/ADR-001-reservation-coordination.md).
 
-## 2. Odsouhlasená změna a rozsah
+Současné chování jsme ověřili dvěma integračními testy:
 
-1. U nově vytvořených rezervací lze CONFIRMED zrušit nejpozději
-   **2 hodiny před začátkem**. Přesně na hranici je zrušení povolené.
-2. PENDING_APPROVAL může vlastník nadále stáhnout kdykoliv před začátkem.
-   Expirace při začátku podle BR-07 se nemění.
-3. Rezervace vytvořené před zavedením nové politiky zachovají původní
-   podmínky, i když budou schválené až po zavedení změny.
+- Sekundu před začátkem zrušení uspělo a do databáze se uložilo CANCELLED.
+- Přesně při začátku se zrušení odmítlo a v databázi zůstalo CONFIRMED.
 
-Čas rozhoduje server při vyhodnocení operace. Dvě hodiny znamenají
-120 minut skutečného času; výpočet se provádí nad UTC okamžiky,
-zobrazení zůstává v Europe/Prague. Dřívější otevření stránky ani odeslání
-požadavku nepředstavuje příslib úspěchu po dosažení hranice.
+**Oba testy prošly.** Stav jsme po požadavku přečetli také samostatným
+spojením do databáze. [Postup, prostředí a příprava dat](../verification/c08-cancellation-baseline.md)
+a [úplný výstup testů](../verification/evidence/c08-cancellation-baseline.log)
+jsou uložené zvlášť. Tyto výsledky dokazují dnešní chování; nové pravidlo
+se bude testovat až po implementaci.
 
-Mimo rozsah: storno poplatky a platby, oznámení e-mailem, administrátorská
-výjimka, rozdílné limity sportovišť, nová role, změna DB technologie,
-worker, změna dostupnosti a obnovení automaticky zamítnutých konkurentů.
+## 2. Co se má změnit
 
-**Důsledek k výslovnému posouzení při review:** Create ani Approve tímto
-návrhem neomezujeme. Nová rezervace potvrzená méně než 2 hodiny před
-začátkem už nepůjde zrušit vlastníkem; čekající žádost v témže čase ještě
-stáhnout lze. UI musí podmínku sdělit před vytvořením žádosti/rezervace
-a po schválení zobrazit aktuální možnost storna. Návrh nezavádí ochrannou
-lhůtu po vytvoření ani schválení.
+Dohodli jsme se na těchto pravidlech:
 
-## 3. Podmínky přijetí — plán pro C09
+1. **Novou potvrzenou rezervaci lze zrušit nejpozději 2 hodiny před začátkem.**
+   Přesně 2 hodiny předem je zrušení ještě povolené.
+2. **Čekající žádost lze dál stáhnout kdykoliv před začátkem.**
+   Její vypršení při začátku rezervace zůstává stejné.
+3. **Dříve vytvořené rezervace si ponechají původní podmínky.**
+   To platí i pro starou čekající žádost, kterou správce schválí až po
+   zavedení změny. Rozhoduje vytvoření rezervace, ne datum jejího schválení.
 
-Společně platí ověření identity, vlastníka a povoleného stavu. „Nová“
-znamená vytvořená podle nové politiky, nikoliv nově schválená.
+Například novou potvrzenou rezervaci na 11:00 lze zrušit do 9:00 včetně.
+V 9:00:01 už zrušení neprojde. Pokud jde o rezervaci vytvořenou před
+zavedením změny, dál půjde zrušit kdykoliv před 11:00.
 
-| ID | Vstup / situace | Požadované pozorovatelné chování |
+Rozhoduje čas na serveru při zpracování žádosti o zrušení. Dvě hodiny
+znamenají 120 skutečných minut, a to i při změně letního času. Výpočet
+použije UTC; uživatel uvidí místní čas Europe/Prague. Samotné otevření
+stránky před lhůtou nezaručuje, že pozdější zrušení ještě projde.
+
+Důležitý důsledek: rezervace může být vytvořená nebo schválená méně než
+2 hodiny před začátkem. Pokud už podléhá novým pravidlům a je potvrzená,
+vlastník ji pak zrušit nemůže. Dokud žádost čeká na schválení, stáhnout ji
+může. Aplikace proto musí podmínky vysvětlit před vytvořením rezervace
+a v přehledu ukázat, zda ji ještě lze zrušit.
+
+V této změně neřešíme poplatky, platby, e-maily, výjimky správce ani různé
+lhůty pro jednotlivá sportoviště. Neměníme ani pravidlo, že zrušení
+potvrzené rezervace neobnoví žádosti, které kvůli ní byly zamítnuté.
+
+## 3. Podle čeho poznáme, že změna funguje
+
+Čísla AC slouží jako odkazy na konkrétní podmínky přijetí. V tabulce
+„nová rezervace“ znamená vytvořená po zavedení nových pravidel.
+Zrušení smí dál provést pouze vlastník a pouze v povoleném stavu.
+HTTP 200 znamená úspěch; HTTP 409 odmítnutí kvůli pravidlům rezervace.
+
+| ID | Situace | Očekávaný výsledek |
 | --- | --- | --- |
-| AC-01 | Nová CONFIRMED, `now < starts_at - 2 h` | Vlastník zruší; HTTP 200, tentýž záznam CANCELLED |
-| AC-02 | Nová CONFIRMED, `now == starts_at - 2 h` | Stejný úspěch jako AC-01 |
-| AC-03 | Nová CONFIRMED, `starts_at - 2 h < now < starts_at` | HTTP 409, srozumitelný důvod storno lhůty; uložený záznam zůstane CONFIRMED |
-| AC-04 | Nová nebo původní CONFIRMED, `now >= starts_at` | HTTP 409, bez změny potvrzeného stavu |
-| AC-05 | Původní CONFIRMED, `now < starts_at`, i sekundu před začátkem | Původní právo vlastníka zrušit zůstane zachované |
-| AC-06 | Nová nebo původní PENDING_APPROVAL, `now < starts_at` | Vlastník stáhne žádost bez dvouhodinového omezení; CANCELLED |
-| AC-07 | PENDING_APPROVAL, `now >= starts_at` | Stávající BR-07: HTTP 409, uložené EXPIRED |
-| AC-08 | Původní čekající žádost schválená po zavedení změny | Ponechá si původní storno politiku; AC-05 |
-| AC-09 | Cizí/nepřihlášený uživatel nebo konečný stav | Zachovat existující oprávnění a kontrakt odmítnutí; opakované storno stav nemění |
-| AC-10 | Úspěšné/odmítnuté storno přes API nebo web | Stejné rozhodnutí služby; web ukazuje možnost a deadline podle politiky a při POST znovu kontroluje čas |
-| AC-11 | Zobrazení podmínek před vytvořením; následný přehled | Uživatel zná omezení potvrzené rezervace; staré rezervace mají rozlišitelné původní podmínky |
-| AC-12 | Migrace a Create po nasazení | Všechny původní řádky zachovají původní politiku; nové dostanou novou; politika se neposílá jako volitelný klientský vstup |
+| AC-01 | Nová potvrzená rezervace, více než 2 h do začátku | Zrušení uspěje: HTTP 200, v databázi CANCELLED |
+| AC-02 | Nová potvrzená rezervace, přesně 2 h do začátku | Zrušení ještě uspěje, stejně jako AC-01 |
+| AC-03 | Nová potvrzená rezervace, méně než 2 h do začátku | HTTP 409 s vysvětlením lhůty; v databázi zůstane CONFIRMED |
+| AC-04 | Potvrzená rezervace právě začala nebo už začátek minul | HTTP 409; potvrzený stav se nezmění, u starých i nových rezervací |
+| AC-05 | Původní potvrzená rezervace před začátkem | Zrušení dál uspěje i sekundu před začátkem |
+| AC-06 | Čekající žádost před začátkem | Vlastník ji může stáhnout bez dvouhodinového omezení; uloží se CANCELLED |
+| AC-07 | Čekající žádost při začátku nebo později | Zrušení se odmítne, HTTP 409; podle BR-07 se uloží EXPIRED |
+| AC-08 | Stará žádost schválená po zavedení změny | Ponechá si původní podmínky a chová se podle AC-05 |
+| AC-09 | Cizí či nepřihlášený uživatel, opakované zrušení nebo konečný stav | Zachovají se dosavadní oprávnění a odmítnutí; uložený stav se nezmění |
+| AC-10 | Zrušení přes web i API | Obě cesty použijí stejná pravidla; server při odeslání znovu zkontroluje čas |
+| AC-11 | Vytváření rezervace a osobní přehled | Uživatel se dozví podmínky před vytvořením a potom uvidí lhůtu nebo důvod, proč už zrušení není možné; staré podmínky budou rozlišitelné |
+| AC-12 | Převod databáze a následné vytváření rezervací | Staré záznamy si zachovají původní podmínky, nové dostanou nové; uživatel si pravidla nemůže zvolit v API požadavku |
 
-Zrušení uvolní termín podle BR-02. Odmítnuté storno ho neuvolní.
-Zrušení vítěze neobnovuje REJECTED žádosti podle BR-08.
+Úspěšné zrušení uvolní termín podle BR-02; odmítnuté zrušení ho neuvolní.
+Zamítnuté žádosti se neobnovují, jak stanoví BR-08.
 
-## 4. Impact Matrix
+## 4. Kterých částí projektu se změna dotkne — Impact Matrix
 
-Metoda: od AC k autoritativnímu rozhodnutí, načtení a uložení rezervace;
-potom obě vstupní cesty, čtecí model portálu, schéma, testy a release.
-Byly prohlédnuty níže uvedené aktuální artefakty. CHANGE znamená nutnou
-budoucí změnu, CHECK regresní ověření; neoznačuje hotovou implementaci.
-Vlastník realizace a ověření: tým projektu; konkrétní rozdělení pro C09
-určí tým před implementací.
+Prošli jsme pravidla, místo rozhodování v kódu, ukládání do databáze,
+web i API, testy a nasazení. Tabulka rozlišuje:
 
-| Oblast / přesný artefakt | Dopad a důvod | Akce pro C09 | Důkaz dokončení |
+- **CHANGE — upravit:** tato část potřebuje změnu.
+- **CHECK — ověřit:** má zůstat zachovaná, ale musíme ji zkontrolovat.
+- **NO IMPACT — bez dopadu:** pro tuto změnu není potřeba zásah.
+
+Úpravy a ověření zajistí tým projektu. Tabulka je plán práce, nikoliv
+seznam již provedených úprav.
+
+| Oblast a odkaz | Co a proč | Co udělat | Jak ověřit výsledek |
 | --- | --- | --- | --- |
-| [REQ-05](cancel-reservation.md), [BR-05](business-rules.md#br-05), [BR-06](business-rules.md#br-06), [REQ-10](my-reservations.md) | CHANGE: dvě politiky, nové hranice a u v2 odlišný výsledek Approve před Cancel | Popsat kontrakt a výjimku původních rezervací; nynější platný text zatím zachovat | Review proti AC-01 až AC-12 a souběhové regresi |
-| [Životní cyklus](../design/reservation-lifecycle.md) | CHANGE: guard CONFIRMED → CANCELLED závisí na politice; stavy stejné | Upravit guard, rozlišit PENDING a CONFIRMED | Přechodové a hraniční testy |
-| [ADR-01](../architecture/decisions/ADR-001-reservation-coordination.md), [services.py](../../sport_booking/reservations/services.py), `ReservationService.cancel` | CHECK: rozhodování zůstane ve společné službě | Zachovat protected load → owner → expiry → cancellation → commit | Review volání, architektonické a integrační testy |
-| [rules.py](../../sport_booking/reservations/rules.py), `TimeRules.validate_cancellation` | CHANGE: dnes ověřuje pouze začátek | Rozhodovat podle stavu, politiky a serverového času | Testy před/na/po hranici; UTC a změna letního času |
-| [domain.py](../../sport_booking/reservations/domain.py), `Reservation`, `ReservationListing` | CHANGE: služba i UI musí znát politiku | Přenášet politiku a odvodit deadline/možnost storna | Komponentové testy a shoda čtení se zápisem |
-| [models.py](../../sport_booking/reservations/models.py), [migrace](../../sport_booking/reservations/migrations/0003_remove_draft_lifecycle.py) | CHANGE u varianty A: trvalé rozlišení původních a nových záznamů | Nová migrace, backfill, bezpečný default a povolené hodnoty | Migrace existujících dat + nové Create |
-| [persistence.py](../../sport_booking/reservations/persistence.py), `load_protected`, `save`, `list_reservations` | CHANGE: uložit a načítat politiku bez jejího přepisování při Approve/Cancel | Rozšířit mapování domény, modelu a seznamů | Round-trip a AC-08/12, committed SQL čtení |
-| [api.py](../../sport_booking/reservations/api.py), `ReservationApi.cancel` | CHECK: 409 už podporuje; nový důvod odmítnutí | Zachovat endpoint, ověřit response a neovlivnitelnost politiky klientem | API pozitivní/negativní a autorizační testy |
-| [web_views.py](../../sport_booking/reservations/web_views.py), `reservation_action`, `_error_message`; [home.html](../../sport_booking/reservations/templates/reservations/home.html) | CHANGE: dnešní tlačítko kontroluje jen začátek | České vysvětlení lhůty, podmínky před Create a správný deadline/tlačítko | Webové integrační testy včetně zastaralé stránky |
-| [portal.py](../../sport_booking/reservations/portal.py) | CHECK: ověřit předání dat do přehledu | Podle čtecího modelu doplnit politiku nebo odvozené údaje | Test osobního přehledu a GET bez zápisu |
-| [admin.py](../../sport_booking/reservations/admin.py) | CHECK: rezervace se nesmějí upravovat mimo službu | Nové pole nesmí zpřístupnit editaci politiky; Create/Delete jsou zakázané | Kontrola readonly polí a oprávnění adminu |
-| Expirační command, dostupnost, BR-02/06/07/08 | CHECK: bez změny kontraktu; sdílejí stav rezervace | Zachovat expiraci, exkluzivitu, souběh a zamítnutí konkurentů | Relevantní regrese včetně souběhu |
-| Import / samostatný worker pro storno | NO IMPACT: v projektu tyto vstupy neexistují | Nevytvářet nové komponenty | Review skutečných writer cest; expirační command řešen výše |
-| Přímý SQL / ORM mimo službu | CHECK: DB neumí sama garantovat časové storno pravidlo | Neprezentovat API kontrolu jako ochranu libovolného SQL; chránit aplikační writer cesty | Popsat omezení a ověřit admin a migraci |
-| [settings.py](../../sport_booking/sport_booking/settings.py), [README](../../README.md), nasazení | CHANGE postup nasazení; CHECK časová a DB konfigurace | Bez nového scheduleru; migrace při zastavených writerech | Reprodukce upgradu a spuštění |
-| [traceability.json](../verification/traceability.json), [testy](../../sport_booking/reservations/tests.py), [baseline testy](../../sport_booking/reservations/test_c08_baseline.py) | CHANGE: část starých očekávání platí jen pro původní politiku | Zachovat historickou evidenci, doplnit nové scénáře a aktualizovat vazby | Test report, SQL evidence, `update_docs.py --check` |
+| [REQ-05](cancel-reservation.md), [BR-05 a BR-06](business-rules.md#br-05), [REQ-10](my-reservations.md) | CHANGE: jiné podmínky pro staré a nové rezervace; změní se i některé souběhy schválení a zrušení | Popsat nové lhůty, původní podmínky a pořadí současných operací | Porovnat pravidla s AC-01 až AC-12 a testy souběhu |
+| [Životní cyklus](../design/reservation-lifecycle.md) | CHANGE: přechod z CONFIRMED do CANCELLED dostane nové časové podmínky; stavy se nemění | Upravit podmínky přechodu a odlišit čekající žádost | Testy stavových přechodů a přesných časových hranic |
+| [services.py](../../sport_booking/reservations/services.py), `ReservationService.cancel`; [ADR-01](../architecture/decisions/ADR-001-reservation-coordination.md) | CHECK: obě vstupní cesty mají dál používat společnou službu | Zachovat načtení, ověření vlastníka, vypršení, kontrolu storna a bezpečné uložení | Integrační testy a kontrola závislostí |
+| [rules.py](../../sport_booking/reservations/rules.py), `TimeRules.validate_cancellation` | CHANGE: dnes kontroluje jen začátek rezervace | Doplnit pravidlo podle stavu, verze politiky a serverového času | Testy před lhůtou, přesně na ní a po ní; změna letního času |
+| [domain.py](../../sport_booking/reservations/domain.py), `Reservation`, `ReservationListing` | CHANGE: služba i osobní přehled musí znát podmínky konkrétní rezervace | Přenášet verzi politiky a určit poslední čas pro zrušení | Testy přenosu údajů a shody webu s rozhodnutím služby |
+| [models.py](../../sport_booking/reservations/models.py), [dosavadní migrace](../../sport_booking/reservations/migrations/0003_remove_draft_lifecycle.py) | CHANGE u varianty A: rozlišit staré a nové záznamy v databázi | Přidat pole a migraci; starým řádkům přiřadit původní pravidla | Test převodu existující DB a vytvoření nové rezervace |
+| [persistence.py](../../sport_booking/reservations/persistence.py), `load_protected`, `save`, `list_reservations` | CHANGE: načíst a uložit politiku bez změny při schválení nebo stornu | Rozšířit převod mezi databází a objekty aplikace | Načtení po uložení, AC-08/12 a samostatný SQL dotaz |
+| [api.py](../../sport_booking/reservations/api.py), `ReservationApi.cancel` | CHECK: HTTP 409 už existuje, přibude důvod pozdního storna | Ověřit odpověď a zabránit volbě politiky klientem | Úspěšné i odmítnuté požadavky a oprávnění |
+| [web_views.py](../../sport_booking/reservations/web_views.py), `reservation_action`, `_error_message`; [home.html](../../sport_booking/reservations/templates/reservations/home.html) | CHANGE: tlačítko dnes kontroluje jen začátek | Doplnit české vysvětlení, podmínky před vytvořením a správnou možnost zrušení | Webové testy včetně odeslání ze stránky otevřené před lhůtou |
+| [portal.py](../../sport_booking/reservations/portal.py) | CHECK: předává údaje pro osobní přehled | Podle potřeby doplnit údaje o možnosti zrušení | Přehled používá správné podmínky a při čtení nemění DB |
+| [admin.py](../../sport_booking/reservations/admin.py) | CHECK: admin nesmí obcházet společnou službu | Zachovat zákaz přidávání a mazání rezervací; nové pole nesmí umožnit přepsat politiku | Kontrola oprávnění a polí pouze pro čtení |
+| Expirace, dostupnost, BR-02/07/08 a souběh BR-06 | CHECK: zachovat vypršení, zákaz kolizí a zamítání konkurentů; u nových rezervací zohlednit storno lhůtu | Spustit související testy pro obě politiky | Výsledky regresních a souběhových testů |
+| Import a samostatný proces pro storno | NO IMPACT: takové vstupy v projektu nejsou | Nic nového nevytvářet | Kontrola skutečných cest zápisu; expirační příkaz zůstává zahrnutý výše |
+| Přímé SQL nebo zápisy mimo službu | CHECK: databáze sama časové storno pravidlo nehlídá | Zkontrolovat aplikační zápisy a popsat omezení přímého SQL | Kontrola adminu, migrace a míst, kde se stav mění |
+| [settings.py](../../sport_booking/sport_booking/settings.py), [README](../../README.md), nasazení | CHANGE postup aktualizace; CHECK časové a DB nastavení | Popsat migraci při zastavených zápisech, bez nového plánovače | Zkušební aktualizace a spuštění aplikace |
+| [traceability.json](../verification/traceability.json), [testy](../../sport_booking/reservations/tests.py), [testy C08](../../sport_booking/reservations/test_c08_baseline.py) | CHANGE: část dosavadních očekávání bude platit jen pro staré rezervace | Doplnit nové testy a odkazy; původní výsledky uchovat | Výstup testů a kontrola dokumentace |
 
-## 5. Options Matrix
+## 5. Jaké máme možnosti — Options Matrix
 
-Obě varianty zachovávají 2 h pro nové CONFIRMED, původní podmínky starých
-rezervací a výjimku pro PENDING. Délka lhůty je společná business podmínka;
-varianty porovnávají způsob bezpečného rozlišení politik.
+Obě varianty mají splnit stejná pravidla: 2 hodiny u nových potvrzených
+rezervací, zachování starých podmínek a volné stažení čekající žádosti.
+Liší se tím, jak poznáme, která pravidla konkrétní rezervaci patří.
 
-| Varianta | Splnění AC | Přínos | Náklady, selhání a obnova | Jak ověřit |
+| Varianta | Splní požadavky? | Výhody | Náklady a rizika | Jak ji ověřit |
 | --- | --- | --- | --- | --- |
-| **A — uložená verze politiky u každé rezervace** | Ano při správném backfillu a přenosu všemi cestami | Politika zůstává stabilní přes schválení, restart i další release; původ podmínek je čitelný z řádku | Nové pole, migrace a mapování domény/portálu; špatný default může změnit původní práva; rollback musí metadata zachovat | Migrace starých řádků, nové Create, round-trip, schválení staré žádosti, hranice a rollback postup |
-| **B — rozlišení přes `created_at` a pevný UTC okamžik zavedení v konfiguraci** | Ano při jednoznačném okamžiku přepnutí a zachovaných časech vytvoření | Využije existující timestamp bez nového pole v DB | Politika závisí na trvalé konfiguraci každého prostředí; chybný cutoff při obnově nebo změně konfigurace zpětně přepíše interpretaci dat; nutné zastavit všechny writery při přepnutí | Před/na/po cutoff, obnovení konfigurace a DB, restart, stará žádost schválená později |
+| **A — uložit verzi politiky ke každé rezervaci** | Ano, pokud se správně převedou původní data a údaje se přenesou všemi částmi aplikace | Z řádku v DB poznáme platná pravidla; schválení, restart ani další aktualizace je nezmění | Nové pole, migrace a úprava načítání; chybná výchozí hodnota by mohla změnit práva starých rezervací; návrat ke staré verzi nesmí údaj ztratit | Převod starých dat, nové vytvoření, načtení po uložení, pozdější schválení staré žádosti a časové hranice |
+| **B — porovnávat datum vytvoření s pevným datem zavedení změny** | Ano, pokud se okamžik přepnutí jednoznačně nastaví a uchová | Využije existující `created_at`, bez nového pole | Správné chování závisí na trvalém nastavení data přepnutí; chyba při obnově nastavení může změnit podmínky existujících rezervací | Vytvoření před přepnutím, při něm a po něm; restart, obnova DB a nastavení, pozdější schválení staré žádosti |
 
-**Doporučení: A.** Jedno pole a migrace jsou pro současnou Django aplikaci
-přiměřené; stabilita podmínek již vytvořené rezervace je zásadní.
-Varianta B je proveditelná, ale dlouhodobě váže práva uživatele na správně
-obnovený globální čas přepnutí. Samostatná služba tuto potřebu neřeší lépe.
+**Doporučujeme variantu A.** Vyžaduje pole navíc a migraci, ale podmínky
+rezervace zůstanou uložené přímo u ní. U varianty B bychom museli při každém
+nasazení a obnově zachovat správné datum přepnutí.
 
-Nečinnost zachová ověřenou baseline, ale neřeší rušení na poslední chvíli.
-Ruční upozornění na včasné storno může být dočasná kompenzace, nikoliv
-splnění přijatého zákazu; není doporučené jako konečné řešení.
+Pokud neuděláme nic, aplikace zůstane funkční, ale pozdní storna budou dál
+možná. Upozornění uživatelů, aby rušili včas, může dočasně pomoci;
+požadovaný zákaz tím však nezajistíme.
 
-## 6. Rozhodnutí a review
+## 6. Na čem jsme se dohodli
 
-- **Zadavatel a vlastník požadavku:** uživatel projektu v tomto chatu.
-- **Datum business rozhodnutí:** 8. 11. 2026.
-- **Rozhodnutí:** ACCEPT podmínek v oddílu 2 a jejich rozpracování do C09.
-- **Technické doporučení:** A; čeká na kritické posouzení spolužákem.
-- **Vlastník realizace/releasu:** tým projektu; tento dokument není release approval.
-- **Peer reviewer:** dosud neurčen, review **NOT DONE**; AI příprava dokumentu
-  není review spolužákem požadované zadáním.
+Zadavatel projektu **8. 11. 2026 schválil změnu pravidel** popsanou
+v části 2. Výsledek rozhodnutí je **ACCEPT — změnu chceme zavést**.
+Důvodem je čas, který provozovatel potřebuje k nabídnutí uvolněného termínu,
+a současně zachování slíbených podmínek již vytvořených rezervací.
 
-Reviewer má především posoudit: zákaz storna krátce po potvrzení při
-blízkém termínu; zachování staré politiky u později schválené žádosti;
-hranici přesně 2 h; důvěryhodnost migrace a obnovy. Sem doplní jméno,
-datum, konkrétní námitku, reakci týmu a konečný výběr varianty.
-Před C09 uzavřít tyto body; nevykazovat peer-reviewed rozhodnutí předem.
+Pro provedení doporučujeme variantu A. Implementaci a ověření zajistí tým
+projektu; konkrétní úkoly si rozdělí před zahájením práce. Tento dokument
+zatím neznamená, že je změna naprogramovaná nebo otestovaná.
 
-## 7. Předávka do C09 — nejmenší delta varianty A
 
-1. Po review aktualizovat REQ-05, BR-05, REQ-10 a guard ve stavovém návrhu.
-   Aktuální dokumenty popisují dosud běžící aplikaci a nyní se nepřepisují.
-2. Přidat neměnnou verzi storno politiky k rezervaci: původní `v1`, nová
-   `v2`. Backfill všech existujících stavů na v1, nové Create na v2;
-   schválení nemění verzi. Neodvozovat ji ze současného statusu.
-3. Přenést verzi přes doménu, persistenci a čtecí přehled. Ve společných
-   pravidlech určit deadline pro CONFIRMED v2 jako `starts_at - 2 h`;
-   ostatní oprávněná storna zůstanou před začátkem. Zachovat vlastnictví,
-   konečné stavy, expiraci a atomickou změnu stavu.
-4. Upravit webové vysvětlení a tlačítko podle stejné politiky; POST musí
-   znovu rozhodnout na serveru. API vrátí srozumitelný důvod s HTTP 409.
-5. Doplnit níže uvedené testy a vazby; spustit integrační a regresní sadu
-   s oddělenou souborovou SQLite DB, `manage.py check`,
-   `makemigrations --check --dry-run`, `python3 scripts/update_docs.py --check`.
-6. Zaznamenat výsledný commit, novou migraci, skutečný test report a
-   clean-checkout ověření; teprve potom rozhodnout o releasu.
+## 7. Co bude následovat při implementaci
 
-### Nové test oracle — zatím NOT RUN
+Zadání C08 požaduje připravit předání do C09. Samostatné zadání C09 zatím
+nemáme; následující body jsou náš plán, který podle něj případně upravíme.
 
-Pro novou potvrzenou rezervaci se začátkem `2026-11-10T10:00:00Z`:
+1. Aktualizovat REQ-05, BR-05, BR-06, REQ-10 a popis stavových přechodů.
+   Dosavadní texty zatím popisují běžící aplikaci.
+2. Přidat k rezervaci verzi politiky: `v1` pro původní pravidla a `v2` pro
+   nová. Při migraci přiřadit všem existujícím řádkům v1; novým rezervacím
+   při vytváření v2. Pozdější schválení verzi nesmí změnit.
+3. Doplnit načítání a ukládání verze. Pro potvrzenou v2 povolit zrušení
+   do `starts_at - 2 hodiny` včetně. Zachovat ověření vlastníka, povolených
+   stavů, vypršení žádosti a bezpečné uložení celé operace.
+4. Upravit vysvětlení a tlačítko na webu podle stejných pravidel. API musí
+   při pozdním stornu vrátit HTTP 409 s jasným důvodem.
+5. Doplnit nové testy a ověřit, že ostatní funkce dál fungují. Použít
+   oddělenou souborovou testovací DB, spustit také `manage.py check`,
+   `makemigrations --check --dry-run` a `python3 scripts/update_docs.py --check`.
+6. Uložit výstup testů, označit výsledný commit a migraci, vyzkoušet
+   spuštění z čistého stažení projektu a rozhodnout o nasazení.
 
-| Případ | Rozhodný čas / vstup | Očekávání |
+### Připravené testy nového chování
+
+Tyto scénáře se zatím **nespouštěly**. Pro příklady používáme začátek
+rezervace `2026-11-10T10:00:00Z`; `Z` označuje UTC. V Praze je tehdy 11:00.
+Po požadavku vždy ověříme i skutečně uložená data.
+
+| Případ | Vstup | Očekávaný výsledek |
 | --- | --- | --- |
-| N-01 | `07:59:59Z` | HTTP 200, committed CANCELLED |
-| N-02 | `08:00:00Z` | HTTP 200, committed CANCELLED |
-| N-03 | `08:00:01Z` | HTTP 409, committed CONFIRMED |
-| N-04 | `10:00:00Z` | HTTP 409, committed CONFIRMED |
-| N-05 | Původní CONFIRMED v `09:59:59Z` | HTTP 200, committed CANCELLED |
-| N-06 | PENDING obou politik v `09:59:59Z`, resp. `10:00:00Z` | CANCELLED, resp. odmítnutí + committed EXPIRED |
-| N-07 | Migrace DB s existujícími rezervacemi všech stavů; pak nové Create | Staré v1 beze změny ID, stavu a intervalu; nové v2 |
-| N-08 | Schválení původní čekající žádosti, potom storno sekundu před začátkem | Zůstává v1, storno uspěje |
-| N-09 | Web otevřen před hranicí, POST dorazí po ní | Služba odmítne; UI vysvětlí lhůtu; DB beze změny |
-| N-10 | Přechod zimního/letního času | Dvě hodiny skutečného času v UTC, správně zobrazený místní deadline |
+| N-01 | Nová potvrzená rezervace, zrušení v `07:59:59Z` | HTTP 200, v DB CANCELLED |
+| N-02 | Totéž v `08:00:00Z` | HTTP 200, v DB CANCELLED |
+| N-03 | Totéž v `08:00:01Z` | HTTP 409, v DB CONFIRMED |
+| N-04 | Totéž v `10:00:00Z` | HTTP 409, v DB CONFIRMED |
+| N-05 | Původní potvrzená rezervace, zrušení v `09:59:59Z` | HTTP 200, v DB CANCELLED |
+| N-06 | Čekající žádost obou verzí, zrušení v `09:59:59Z`, potom samostatný případ v `10:00:00Z` | Před začátkem CANCELLED; při začátku odmítnutí a EXPIRED |
+| N-07 | Migrace DB se starými rezervacemi všech stavů a následné vytvoření nové | Staré mají v1, nezměněné ID, stav a interval; nová má v2 |
+| N-08 | Schválení staré čekající žádosti a zrušení sekundu před začátkem | Zůstala v1, zrušení uspěje |
+| N-09 | Stránka otevřená před lhůtou, požadavek na zrušení dorazí po ní | Server odmítne, web vysvětlí důvod, DB beze změny |
+| N-10 | Storno lhůta přes změnu zimního a letního času | Odstup 120 skutečných minut a správně zobrazený místní čas |
 
-Regrese: vlastnictví, nepřihlášený přístup, opakované storno, konečné stavy,
-uvolnění termínu po úspěchu a blokování po odmítnutí, neobnovení REJECTED,
-expirace i souběh Approve/Cancel. U nové v2 žádosti schvalované méně než
-2 h před začátkem odpovídá souběh sériovému pořadí: Cancel první → CANCELLED
-a Approve odmítnuto; Approve první → CONFIRMED a Cancel odmítnuto.
-Původní v1 zachová dosavadní souběhový kontrakt BR-06. Toto rozlišení
-musí být při implementaci výslovně doplněno také do specifikace BR-06.
-Baseline TC-C08-01/02 zůstanou regresí **v1**; v novém schématu budou
-potřebovat vědomou přípravu původní politiky, ne přepsání starého logu.
+Dále ověříme oprávnění, opakované zrušení, konečné stavy, uvolnění termínu
+po úspěchu, zachování blokace po odmítnutí, neobnovení zamítnutých žádostí
+a vypršení čekajících žádostí.
 
-### Nasazení, obnova a rizika
+Zvlášť otestujeme současné schválení a zrušení nové žádosti méně než
+2 hodiny před začátkem. Pokud se nejdřív provede zrušení, schválení už
+neprojde. Pokud se nejdřív provede schválení, žádost se potvrdí a zrušení
+už neprojde kvůli lhůtě. Stará v1 zachová dosavadní chování podle BR-06.
 
-Pro jednoznačné přepnutí zastavit server a ostatní writery, zálohovat DB,
-aplikovat migraci s backfillem v1, nasadit Create s v2 a ověřit data před
-obnovením provozu. Neprovozovat smíšené staré a nové writery. Migrace nesmí
-jedním novým defaultem označit existující řádky jako v2.
+Původní TC-C08-01/02 ponecháme jako testy starých podmínek v1. Po změně
+schématu jim výslovně připravíme původní politiku. Historický výstup testů
+nebudeme přepisovat podle nového chování.
 
-Rollback starého kódu by v2 rezervacím znovu dovolil pozdní storno a smazání
-pole by ztratilo informaci o politice. Po vzniku v2 proto nelze slíbit
-bezpečný prostý downgrade: zachovat metadata, zastavit zápisy a použít
-opravenou verzi respektující obě politiky. Obnova celé předchozí zálohy
-by ztratila novější operace; není automatická náhrada tohoto postupu.
+### Jak změnu nasadit a co při potížích
 
-Nová rizika: chybný backfill, rozpor UI/API, přepsání politiky při schválení
-a změna výsledku souběhu u v2. Vazba na dosavadní R-04 (nesoulad artefaktů),
-R-01 (DB/souběh), R-03 (reprodukce prostředí) v
-[registru rizik](../history/evidence-and-evolution.md).
-Účinnost navržených opatření a skutečné reziduální riziko nové politiky:
-**NOT VERIFIED**. Přehodnotit po migraci, integračních testech a review;
-další trigger je změna lhůty, databáze nebo nález odlišného UI/API chování.
+Před aktualizací zastavíme server a ostatní procesy zapisující do DB,
+vytvoříme zálohu a provedeme migraci. Ověříme, že staré záznamy mají v1
+a nové vytváření používá v2. Potom obnovíme provoz. Stará a nová verze
+aplikace nesmějí současně vytvářet rezervace.
 
-## 8. Kontrola dokončení C08
+Návrat ke starému kódu po vzniku v2 rezervací by znovu dovolil jejich pozdní
+storno. Při opravě proto zachováme uložené verze politiky a použijeme kód,
+který obě pravidla respektuje. Pouhá obnova staré zálohy by navíc ztratila
+novější rezervace a změny; není automatickým řešením.
 
-- Baseline a přijaté původní chování: hotovo, odkazy výše.
-- Dva krokované případy a skutečné integrační provedení: hotovo, 2 PASS.
-- Věrohodný CR, AC, Impact Matrix a dvě proveditelné varianty: připraveno.
-- Souhlas zadavatele s business změnou: zaznamenán.
-- Review spolužákem, konečný výběr varianty a rozdělení odpovědností: zbývá.
-- Rozsah a nové/regresní oracle pro C09: připraveno k review.
+Největší rizika jsou chybné přiřazení politiky starým datům, odlišná pravidla
+webu a API nebo přepsání politiky při schválení. Navazují na R-04
+(nesoulad dokumentace a kódu), R-01 (databáze a souběh) a R-03
+(opakovatelné spuštění) v [registru rizik](../history/evidence-and-evolution.md).
+Zatím nemáme důkaz, že navržené úpravy tato rizika ošetřily. To ověříme
+během implementace a testování. Posouzení znovu otevřeme při změně lhůty,
+databáze nebo při rozdílném chování webu a API.
+
+## 8. Co máme hotové
+
+- Popsaný výchozí stav a dva provedené testy: hotovo, oba prošly.
+- Návrh změny a souhlas s pravidly: hotovo.
+- Analýza dopadů, dvě varianty a doporučení: připravené.
+- Plán implementace a ověření pro navazující cvičení: připravený.
+- Implementace a testy nových pravidel: zatím neprovedené, následují později.
 
 [Přehled požadavků](README.md) · [Ověřování](../verification/README.md)
