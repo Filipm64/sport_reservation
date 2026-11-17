@@ -13,9 +13,18 @@ Následně zadavatel 8. 11. 2026 přijal dvouhodinovou storno lhůtu pro nové
 potvrzené rezervace včetně přesné hranice, zachování rušení čekajících
 žádostí před začátkem a původních podmínek existujících rezervací.
 [C08 — Change Request](../requirements/C08-change-request.md) obsahuje AC,
-dopady, dvě technické varianty a předávku do C09. Doporučená varianta A
-ukládá verzi politiky k rezervaci; review spolužákem a konečný výběr varianty
-zatím nejsou provedené. Aplikační pravidla zůstávají beze změny.
+dopady, dvě původní technické varianty a předávku do C09. Uživatel
+17. 11. 2026 potvrdil schválení návrhu spolužákem a předal připomínku,
+aby lhůtu nastavoval provozovatel sportoviště. Přijatá úprava varianty A
+ukládá k rezervaci při vytvoření konkrétní lhůtu v minutách z nastavení
+sportoviště. Pozdější změny nastavení ji neovlivní; staré rezervace
+dostanou 0 minut, výchozí nastavení sportoviště je 120 minut.
+Podrobnosti review a jeho vypořádání jsou v části 6 Change Requestu.
+Dne 17. 11. 2026 následovala implementace v pracovním stromu: nastavení
+Resource, uložená lhůta Reservation, migrace 0004 a společné časové pravidlo
+pro API i web. [Záznam C09](../verification/c09-release-record.md) obsahuje
+ověření a zbývající review, reprodukci a release kroky. Aplikační databáze
+nebyla migrována; ověření používá oddělenou testovací DB.
 
 ## C01 Engineering Spike
 

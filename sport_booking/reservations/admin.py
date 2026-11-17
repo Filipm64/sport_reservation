@@ -13,7 +13,7 @@ class SportAdmin(admin.ModelAdmin):
 class ResourceAdmin(admin.ModelAdmin):
     list_display = (
         'id', 'name', 'sport', 'location', 'opens_at', 'closes_at',
-        'is_available', 'requires_approval',
+        'is_available', 'requires_approval', 'cancellation_notice_minutes',
     )
     list_filter = ('sport', 'is_available', 'requires_approval')
     search_fields = ('name', 'location', 'sport__name')
@@ -31,6 +31,7 @@ class ReservationAdmin(admin.ModelAdmin):
     readonly_fields = (
         'user', 'resource', 'starts_at', 'ends_at', 'status',
         'created_at', 'approval_requested_at',
+        'cancellation_notice_minutes',
     )
     date_hierarchy = 'starts_at'
     ordering = ('-starts_at',)

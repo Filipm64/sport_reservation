@@ -66,7 +66,7 @@ class DjangoDataStore:
         except models.Resource.DoesNotExist:
             raise ReservationError('not_found', 'Resource not found.')
         return Resource(resource.pk, resource.is_available, resource.requires_approval,
-                        resource.opens_at, resource.closes_at)
+                        resource.opens_at, resource.closes_at, resource.cancellation_notice_minutes)
 
     def set_operating_hours(self, resource_id, opens_at, closes_at):
         if self._atomic is None:
@@ -84,6 +84,7 @@ class DjangoDataStore:
         return Reservation(
             row.pk, row.user_id, resource, TimeInterval(row.starts_at, row.ends_at),
             row.status,
+            row.cancellation_notice_minutes,
             ApprovalRequest(row.approval_requested_at) if row.approval_requested_at else None,
         )
 
@@ -112,6 +113,7 @@ class DjangoDataStore:
                 row.pk, row.name, row.sport.name, row.location,
                 row.opens_at.strftime('%H:%M'), row.closes_at.strftime('%H:%M'),
                 row.is_available, row.requires_approval,
+                row.cancellation_notice_minutes,
             )
             for row in models.Resource.objects.select_related('sport').order_by('name')
         ]
@@ -134,6 +136,7 @@ class DjangoDataStore:
             ReservationListing(
                 row.pk, row.resource.name, row.resource.location,
                 row.starts_at, row.ends_at, row.status, row.user.username,
+                row.cancellation_notice_minutes,
             )
             for row in query
         ]
@@ -149,6 +152,7 @@ class DjangoDataStore:
                 user_id=reservation.user_id, resource_id=reservation.resource.id,
                 starts_at=reservation.interval.start, ends_at=reservation.interval.end,
                 status=reservation.status, approval_requested_at=requested_at,
+                cancellation_notice_minutes=reservation.cancellation_notice_minutes,
             )
             reservation.id = row.pk
             self._rows[row.pk] = row

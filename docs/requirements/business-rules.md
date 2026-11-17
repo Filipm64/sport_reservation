@@ -25,13 +25,20 @@
 
 - **BR-05 — Zrušení:** Vlastník smí před začátkem zrušit rezervaci ve
   stavu `PENDING_APPROVAL` nebo `CONFIRMED`. Záznam se nemaže.
-  Opakované zrušení ani zrušení po začátku není povoleno.
+  Pro CONFIRMED musí zároveň platit `now <= starts_at - uložená lhůta`;
+  přesně na této hranici je zrušení povolené, vždy však jen při `now < starts_at`.
+  Lhůta v minutách se při vytvoření kopíruje z nastavení sportoviště a dál
+  se nemění; staré rezervace dostanou při migraci 0 minut. Výchozí nastavení
+  sportoviště je 120 minut. PENDING_APPROVAL lze stáhnout bez této lhůty.
+  Rozhoduje serverový čas a skutečné minuty v UTC. Opakované zrušení ani
+  zrušení při začátku nebo později není povoleno.
 <a id="br-06"></a>
 
 - **BR-06 — Souběh:** V jednom výsledném stavu nesmějí být dvě
   překrývající se rezervace stejného Resource `CONFIRMED`. Souběžné operace mají výsledek odpovídající sériovému pořadí.
-  Pokud Approve uspěje dříve než Cancel, vlastník stále může
-  před začátkem zrušit `CONFIRMED`. Pokud Cancel uspěje dříve,
+  Pokud Approve uspěje dříve než Cancel, zrušení `CONFIRMED` musí splnit
+  také uloženou storno lhůtu z BR-05. Po její hranici tedy nemusí uspět,
+  přestože by stažení čekající žádosti ještě bylo povolené. Pokud Cancel uspěje dříve,
   schválení již není povolené.
 <a id="br-07"></a>
 

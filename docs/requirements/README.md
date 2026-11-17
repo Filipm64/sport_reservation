@@ -3,8 +3,9 @@
 [Přehled dokumentace](../README.md) · [Účel, aktéři a rozsah](overview.md) · [Business pravidla](business-rules.md)
 
 [C08 — Change Request: storno politika rezervací](C08-change-request.md)
-zachycuje přijatý záměr pro C09. Nová politika zatím není implementovaná;
-níže uvedené požadavky nadále popisují současnou aplikaci.
+zachycuje přijaté rozhodnutí pro C09. Nastavitelná storno lhůta ukládaná
+k rezervaci je implementovaná; [záznam C09](../verification/c09-release-record.md)
+obsahuje výsledky testů a zbývající review/release kroky.
 
 | ID | Požadavek | Implementace, návrh a testy |
 | --- | --- | --- |

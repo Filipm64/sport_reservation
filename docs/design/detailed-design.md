@@ -10,7 +10,7 @@ Zákazník rezervaci odešle jedním krokem. Služba ověří interval a dostupn
 
 Potvrzené rezervace stejného sportoviště se nesmějí časově překrývat. Potvrzení jedné rezervace automaticky zamítne ostatní překrývající se čekající žádosti stejného sportoviště. Vše tvoří jednu transakci.
 
-Samotné `PENDING_APPROVAL` neblokuje sportoviště; dostupnost závisí na příznaku sportoviště a překryvu s `CONFIRMED`. Čekající žádost platí do začátku rezervace, bez 24hodinového limitu. Terminální stavy jsou `REJECTED`, `CANCELLED` a `EXPIRED`. `CONFIRMED` lze před začátkem zrušit.
+Samotné `PENDING_APPROVAL` neblokuje sportoviště; dostupnost závisí na příznaku sportoviště a překryvu s `CONFIRMED`. Čekající žádost platí do začátku rezervace, bez 24hodinového limitu. Terminální stavy jsou `REJECTED`, `CANCELLED` a `EXPIRED`. `CONFIRMED` lze před začátkem zrušit podle uložené storno lhůty (BR-05).
 
 ## Odpovědnosti a vlastníci
 
@@ -66,7 +66,7 @@ approval_deadline = reservation.interval.start
 expired = pending and now >= approval_deadline
 ```
 
-`cancel` ověří vlastníka a `now < start`, pak převede `PENDING_APPROVAL` nebo `CONFIRMED` na `CANCELLED`. Expirace při začátku má přednost. Opakované zrušení ani obnovení terminálního stavu nejsou povoleny.
+`cancel` ověří vlastníka a `now < start`; u `CONFIRMED` navíc `now <= start - uložená lhůta`, pak převede rezervaci na `CANCELLED`. Lhůta se v `create` zkopíruje z Resource k Reservation a dále se nepřepisuje. `TimeRules.is_cancellation_open` sdílí výpočet mezi rozhodováním a osobním přehledem. Nastavení sportoviště v adminu působí pouze na další vytvoření. Expirace při začátku má přednost. Opakované zrušení ani obnovení terminálního stavu nejsou povoleny.
 
 [Strukturální diagram](design-classes.md) · [Sekvenční diagram](approval-sequence.md) · [Stavový diagram](reservation-lifecycle.md) · [Konkrétní implementace a testy](../verification/coverage.md)
 

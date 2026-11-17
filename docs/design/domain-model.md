@@ -21,11 +21,13 @@ classDiagram
         lokalita
         dostupny
         vyzadujeSchvaleni
+        stornoLhutaMinuty
     }
     class Reservation {
         identifikator
         stav
         vytvorenoV
+        ulozenaStornoLhutaMinuty
     }
     class TimeInterval {
         zacatek
@@ -96,3 +98,11 @@ při návrhu architektury.
 ## Provozní doba Resource
 
 Resource má nyní závazné `opens_at` a `closes_at`. Stejný denní interval platí každý den v Europe/Prague; celé rezervace musí být uvnitř podle [BR-09 / REQ-13](../requirements/operating-hours.md). Nastavení řídí ResourceService, ověření před vytvořením a schválením ReservationService přes TimeRules.
+
+## Storno lhůta — C09
+
+Resource má měnitelné `cancellation_notice_minutes` (výchozí 120).
+Reservation má vlastní uloženou hodnotu stejného jména, převzatou při
+vytvoření v transakci. Schválení ani nové nastavení sportoviště ji nemění.
+Migrace starým rezervacím přiřadí 0 minut; doména nezavádí označení v1/v2.
+Pravidlo pro potvrzenou rezervaci je v [BR-05](../requirements/business-rules.md#br-05).

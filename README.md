@@ -113,8 +113,40 @@ a odstraňuje; nepoužívejte cestu k aplikační databázi):
 SPORT_BOOKING_TEST_DB=/tmp/sport-booking-c02-tests.sqlite3 .venv/bin/python sport_booking/manage.py test reservations
 ```
 
-Aktuální ověření: **101 testů, všechny prošly**, včetně souběhu, rollbacku a migrace starých DRAFT. [Výsledek a vazby na konkrétní testy](docs/verification/weekly-operating-hours.md).
+Ověření před C09: **101 testů, všechny prošly**, včetně souběhu, rollbacku a migrace starých DRAFT. [Výsledek a vazby na konkrétní testy](docs/verification/weekly-operating-hours.md).
 Čtyři testy souběhu používají nezávislá spojení; pátý ověřuje expiraci v samostatném procesu.
+
+## Automatické ověření a GitHub CI
+
+[Workflow CI](.github/workflows/ci.yml) se spouští při každém pushi do `main`,
+při otevření, aktualizaci nebo znovuotevření pull requestu do libovolné větve
+a ručně přes záložku **Actions → CI → Run workflow**.
+Používá Ubuntu 24.04 a Python 3.14, nainstaluje `requirements.txt` a spustí
+stejný [ověřovací skript](scripts/check.py), který lze použít lokálně:
+
+```sh
+.venv/bin/python scripts/check.py
+```
+
+Skript kontroluje konzistenci závislostí (`pip check`), Django konfiguraci,
+chybějící migrace, dokumentaci a celý balík `reservations`. Pro každý běh
+vytvoří vlastní dočasnou souborovou SQLite DB, takže proběhnou i testy
+souběhu. Existující `SPORT_BOOKING_TEST_DB` nepřebírá. Při selhání kterékoliv
+kontroly skončí nenulovým exit kódem; ostatní kontroly ještě zaznamená.
+Závislosti musí být před lokálním spuštěním nainstalované podle úvodu README.
+
+Log `.ci-output/check.log` obsahuje commit, stav pracovního stromu, prostředí,
+verze nainstalovaných balíčků, příkazy a exit kódy. Při dalším lokálním běhu
+se přepíše; vlastní cestu lze zadat pomocí `--log /tmp/sport-booking-check.log`.
+Na GitHubu se log nahraje jako artefakt `verification-<run_id>-<run_attempt>`
+s uchováním 30 dní, i při selhání ověřovacího skriptu. Pokud selže instalace
+závislostí ještě před spuštěním skriptu, je příčina v logu kroku na GitHubu.
+CI nepotřebuje vlastní secrets ani zápisová oprávnění k repozitáři.
+
+Konfigurace je připravená; výsledek skutečného běhu na GitHubu se doloží
+až po commitnutí a pushnutí změn. CI samo nenastavuje zákaz merge při
+neúspěchu — případné povinné kontroly se nastavují v pravidlech větve.
+Syntaxe spouštění odpovídá [dokumentaci GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax).
 
 ## Expirace a C03
 
@@ -145,3 +177,34 @@ Expirační command volá stejnou službu. Aktuální změna odstraňuje DRAFT a
 ## Provozní doba sportovišť
 
 Správce ji nastaví na úvodní stránce v části **Nastavit provozní dobu sportovišť**, případně v administraci. Jedna denní doba platí každý den. Celá rezervace musí být uvnitř této doby, včetně ručního zadání a API; při schválení se kontroluje znovu. Viz [REQ-13](docs/requirements/operating-hours.md).
+
+## C09 — storno lhůta uložená k rezervaci
+
+Provozovatel nastavuje **Storno lhůtu (minuty)** v `/admin/` u sportoviště;
+potřebuje staff účet a oprávnění ke změně Resource. Výchozí hodnota je
+120 minut, 0 znamená zrušení kdykoliv před začátkem. Nová rezervace si
+při vytvoření uloží aktuální lhůtu. Pozdější změna nastavení ani schválení
+žádosti ji nemění. Čekající žádost lze stáhnout kdykoliv před začátkem.
+Potvrzenou rezervaci lze zrušit přesně na storno hranici včetně, ale vždy
+jen před začátkem. Rozhoduje čas serveru, web zobrazuje Europe/Prague.
+
+Při aktualizaci zastavte server i další zapisující procesy a vytvořte
+konzistentní zálohu SQLite DB. Potom spusťte:
+
+```sh
+.venv/bin/python sport_booking/manage.py migrate
+```
+
+Migrace `0004_cancellation_notice` zachová ID, stavy, vztahy a časy starých
+rezervací a přiřadí jim lhůtu 0 minut. Sportoviště dostanou výchozích
+120 minut. Před obnovením provozu ověřte tyto hodnoty a nové vytvoření.
+Stará a nová verze aplikace nesmějí současně zapisovat. Migrace je připravená;
+při implementačním ověření byla aplikována pouze na oddělenou testovací DB.
+
+Návrat ke starému kódu po vytvoření rezervací s kladnou lhůtou by znovu
+povolil pozdní storno. Obrácení migrace odstraní uložené lhůty; bezpečná
+obnova musí tyto podmínky zachovat. Automatický rollback není ověřený.
+Přímé SQL a vlastní ORM zápisy mimo službu nehlídají časové storno pravidlo;
+Reservation nemá implicitní výchozí lhůtu pro nové přímé ORM zápisy.
+
+[Záznam implementace C09 a její ověření](docs/verification/c09-release-record.md).

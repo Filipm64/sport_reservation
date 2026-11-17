@@ -29,6 +29,7 @@ class ReservationPersistenceTests(TestCase):
         fields = dict(
             user=self.user, resource=self.resource, starts_at=starts_at,
             ends_at=starts_at + timedelta(hours=1), status="CONFIRMED",
+            cancellation_notice_minutes=0,
         )
         fields.update(overrides)
         return Reservation.objects.create(**fields)
@@ -307,6 +308,7 @@ class ReservationApiTests(TestCase):
             for offset in (timedelta(microseconds=-1), timedelta(0), timedelta(seconds=1)):
                 with self.subTest(action=action, offset=offset):
                     row = Reservation.objects.create(
+                        cancellation_notice_minutes=0,
                         user=self.user, resource=self.approval_resource,
                         starts_at=start, ends_at=start + timedelta(hours=1),
                         status='PENDING_APPROVAL', approval_requested_at=start - timedelta(days=3),

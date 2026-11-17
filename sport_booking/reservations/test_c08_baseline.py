@@ -22,6 +22,7 @@ class CancellationBaselineTests(TransactionTestCase):
         self.resource = Resource.objects.create(
             sport=sport, name='C08 Court', location='Ostrava',
             opens_at=time(8), closes_at=time(22), requires_approval=False,
+            cancellation_notice_minutes=0,
         )
         self.client.force_login(self.owner)
 

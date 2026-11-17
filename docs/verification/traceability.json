@@ -11,7 +11,8 @@
       "BR-06",
       "BR-07",
       "BR-08",
-      "BR-09"
+      "BR-09",
+      "BR-05"
     ],
     "design": [
       "docs/design/domain-model.md"
@@ -24,6 +25,14 @@
       {
         "path": "sport_booking/reservations/rules.py",
         "symbol": "TimeRules.validate_interval"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.save"
+      },
+      {
+        "path": "sport_booking/reservations/models.py",
+        "symbol": "Reservation"
       }
     ],
     "tests": [
@@ -46,6 +55,18 @@
       {
         "path": "sport_booking/reservations/tests.py",
         "symbol": "ReservationApiTests.test_create_pending_checks_conflicts_and_inactive_resource"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_customer_cannot_choose_notice_via_api_or_web"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_admin_change_affects_only_future_reservations"
+      },
+      {
+        "path": "sport_booking/reservations/test_migrations.py",
+        "symbol": "CancellationNoticeMigrationTests.test_existing_terms_survive_migration_and_new_creation_uses_resource_notice"
       }
     ]
   },
@@ -206,6 +227,70 @@
       {
         "path": "sport_booking/reservations/rules.py",
         "symbol": "TimeRules.validate_cancellation"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.cancellation_deadline"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.is_cancellation_open"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.can_cancel"
+      },
+      {
+        "path": "sport_booking/reservations/services.py",
+        "symbol": "ReservationService.create"
+      },
+      {
+        "path": "sport_booking/reservations/models.py",
+        "symbol": "Resource"
+      },
+      {
+        "path": "sport_booking/reservations/models.py",
+        "symbol": "Reservation"
+      },
+      {
+        "path": "sport_booking/reservations/domain.py",
+        "symbol": "Reservation"
+      },
+      {
+        "path": "sport_booking/reservations/domain.py",
+        "symbol": "ReservationListing"
+      },
+      {
+        "path": "sport_booking/reservations/domain.py",
+        "symbol": "Resource"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.load_protected"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.load_resource"
+      },
+      {
+        "path": "sport_booking/reservations/persistence.py",
+        "symbol": "DjangoDataStore.save"
+      },
+      {
+        "path": "sport_booking/reservations/admin.py",
+        "symbol": "ResourceAdmin"
+      },
+      {
+        "path": "sport_booking/reservations/admin.py",
+        "symbol": "ReservationAdmin"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.cancellation_deadline_label"
+      },
+      {
+        "path": "sport_booking/reservations/api.py",
+        "symbol": "ReservationEndpoint.cancel"
       }
     ],
     "tests": [
@@ -228,6 +313,94 @@
       {
         "path": "sport_booking/reservations/test_concurrency.py",
         "symbol": "ReservationConcurrencyTests.test_approve_racing_cancel_finishes_cancelled"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_cancellation_exact_boundaries_for_multiple_notices"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_zero_notice_and_started_reservations"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_pending_can_be_withdrawn_until_start_then_expires"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_admin_change_affects_only_future_reservations"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_approval_preserves_saved_notice_after_configuration_change"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_invalid_or_unauthorized_setting_does_not_change_resource"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_customer_cannot_choose_notice_via_api_or_web"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_stale_web_page_cannot_bypass_deadline"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_web_notice_and_read_only_listing_use_saved_value"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_late_cancellation_keeps_allocation_and_rejected_competitors"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_saved_notice_is_read_only_in_reservation_admin"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_both_serial_orders_of_approval_and_cancellation_after_deadline"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_cancellation_failure_rolls_back_status_and_saved_notice"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_ownership_authentication_and_repeat_preserve_saved_terms"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_dst_deadline_is_displayed_in_correct_local_offset"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationClockTests.test_dst_uses_elapsed_utc_minutes_and_shared_display_rule"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationClockTests.test_large_valid_notice_does_not_overflow_deadline"
+      },
+      {
+        "path": "sport_booking/reservations/test_c08_baseline.py",
+        "symbol": "CancellationBaselineTests.test_cancel_one_second_before_start"
+      },
+      {
+        "path": "sport_booking/reservations/test_c08_baseline.py",
+        "symbol": "CancellationBaselineTests.test_refuse_cancel_at_start"
+      },
+      {
+        "path": "sport_booking/reservations/test_migrations.py",
+        "symbol": "CancellationNoticeMigrationTests.test_existing_terms_survive_migration_and_new_creation_uses_resource_notice"
+      },
+      {
+        "path": "sport_booking/reservations/test_concurrency.py",
+        "symbol": "ReservationConcurrencyTests.test_approve_racing_cancel_after_notice_deadline_has_serial_outcome"
+      },
+      {
+        "path": "sport_booking/reservations/test_concurrency.py",
+        "symbol": "ReservationConcurrencyTests.test_notice_change_racing_creation_saves_one_committed_setting"
       }
     ]
   },
@@ -457,6 +630,18 @@
       {
         "path": "sport_booking/reservations/rules.py",
         "symbol": "TimeRules.display_status"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.cancellation_deadline"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.can_cancel"
+      },
+      {
+        "path": "sport_booking/reservations/rules.py",
+        "symbol": "TimeRules.cancellation_deadline_label"
       }
     ],
     "tests": [
@@ -479,6 +664,18 @@
       {
         "path": "sport_booking/reservations/test_portal_requirements.py",
         "symbol": "PortalRequirementTests.test_personal_list_displays_effective_expiry_without_writing_database"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_web_notice_and_read_only_listing_use_saved_value"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_stale_web_page_cannot_bypass_deadline"
+      },
+      {
+        "path": "sport_booking/reservations/test_cancellation_notice.py",
+        "symbol": "CancellationNoticeTests.test_dst_deadline_is_displayed_in_correct_local_offset"
       }
     ]
   },

@@ -32,6 +32,7 @@ class PortalRequirementTests(TestCase):
     def reservation(self, user=None, status='PENDING_APPROVAL', start=None):
         start = start or timezone.now() + timedelta(days=2)
         return Reservation.objects.create(
+            cancellation_notice_minutes=0,
             user=user or self.customer, resource=self.approval_resource,
             starts_at=start, ends_at=start + timedelta(hours=1), status=status,
             approval_requested_at=start - timedelta(days=2),

@@ -74,3 +74,13 @@ Při následné změně se oprávnění, čas, kolize a stav znovu ověří podl
 ## Výběr času rezervace
 
 [REQ-12 a návrh hodinového rozvrhu](hourly-schedule.md) doplňují ruční zadání. Čtecí dotaz `PortalQueries.weekly_schedule` používá stejné TimeRules a DataStore; vytvoření nadále řídí společná rezervační služba.
+
+## Storno podmínky — C09
+
+Katalog i formulář před vytvořením uvádějí aktuální lhůtu sportoviště
+a výjimku pro stažení čekající žádosti. Osobní přehled používá uloženou
+lhůtu ReservationListing, nikoliv aktuální nastavení Resource. PortalQueries
+doplní deadline a `can_cancel` přes TimeRules; GET nic nezapisuje.
+Potvrzená rezervace po lhůtě nemá tlačítko a vysvětluje důvod.
+Server při POST rozhoduje znovu; pozdní storno má české vysvětlení.
+Nastavení lhůty je v adminu Resource, nikoliv v zákaznickém formuláři.

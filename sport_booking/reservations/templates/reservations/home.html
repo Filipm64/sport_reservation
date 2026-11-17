@@ -80,6 +80,9 @@
             <p>Vlastní čas může být i mimo celé hodiny. Maximální délka rezervace je 2 hodiny.</p>
           </div>
           <div class="booking-actions">
+            <p class="schedule-note">Storno podmínky pro {{ booking_resource.name }}:
+              {% if booking_resource.cancellation_notice_minutes %}potvrzenou rezervaci lze zrušit nejpozději {{ booking_resource.cancellation_notice_minutes }} minut před začátkem, přesně na hranici včetně.{% else %}potvrzenou rezervaci lze zrušit kdykoliv před začátkem.{% endif %}
+              Čekající žádost můžete stáhnout kdykoliv před začátkem. Při vytvoření se uloží aktuální lhůta sportoviště; pozdější změny nastavení ji nezmění. Pokud lhůta již uplynula, potvrzenou rezervaci nelze zrušit.</p>
             <button class="button button-outline" name="action" value="availability" type="submit">Zkontrolovat termín</button>
             <button class="button" name="action" value="create" type="submit">Vytvořit rezervaci <span aria-hidden="true">↗</span></button>
           </div>
@@ -120,6 +123,7 @@
             <div class="venue-title-row"><h3>{{ resource.name }}</h3><span class="availability-dot {% if not resource.is_available %}is-closed{% endif %}" title="{% if resource.is_available %}Dostupné{% else %}Momentálně nedostupné{% endif %}"></span></div>
             <p class="venue-location"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 18s6-5.1 6-10a6 6 0 1 0-12 0c0 4.9 6 10 6 10Z"/><circle cx="10" cy="8" r="2"/></svg>{{ resource.location }}</p>
             <div class="venue-meta"><span>Otevírací doba</span><strong>{{ resource.opens_at }}–{{ resource.closes_at }}</strong></div>
+            <p class="schedule-note">Storno potvrzené rezervace: {% if resource.cancellation_notice_minutes %}nejpozději {{ resource.cancellation_notice_minutes }} minut před začátkem{% else %}kdykoliv před začátkem{% endif %}. Platí pro nově vytvořené rezervace.</p>
             {% if not resource.is_available %}<p class="closed-note">Momentálně nedostupné</p>{% endif %}
           </div>
         </article>
@@ -144,10 +148,18 @@
             <div class="reservation-main">
               <h3>{{ reservation.resource_name }}</h3>
               <p>{{ reservation.location }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"D, j. F" }} <span class="meta-separator">·</span> {{ reservation.starts_at|date:"H:i" }}–{{ reservation.ends_at|date:"H:i" }}</p>
+              <p class="schedule-note">Uložené storno podmínky:
+                {% if reservation.cancellation_notice_minutes %}{{ reservation.cancellation_notice_minutes }} minut před začátkem.{% else %}Kdykoliv před začátkem (0 minut).{% endif %}
+                {% if reservation.status == 'PENDING_APPROVAL' %}Čekající žádost můžete stáhnout před začátkem bez omezení storno lhůtou.
+                {% elif reservation.status == 'CONFIRMED' %}
+                  {% if reservation.can_cancel %}{% if reservation.cancellation_notice_minutes %}Zrušení do {{ reservation.cancellation_deadline_label }} včetně.{% else %}Zrušení pouze před {{ reservation.cancellation_deadline_label }}.{% endif %}
+                  {% else %}Lhůta pro zrušení již uplynula.{% endif %}
+                {% endif %}
+              </p>
             </div>
             <span class="status status-{{ reservation.status|lower }}">{% if reservation.status == 'PENDING_APPROVAL' %}Čeká na schválení{% elif reservation.status == 'CONFIRMED' %}Potvrzeno{% elif reservation.status == 'REJECTED' %}Zamítnuto{% elif reservation.status == 'EXPIRED' %}Vypršelo{% else %}Zrušeno{% endif %}</span>
             <div class="reservation-actions">
-              {% if reservation.status == 'PENDING_APPROVAL' and reservation.starts_at > now or reservation.status == 'CONFIRMED' and reservation.starts_at > now %}
+              {% if reservation.can_cancel %}
                 <form method="post" action="{% url 'reservation-action' reservation.id 'cancel' %}">{% csrf_token %}<button class="button-quiet" type="submit">Zrušit</button></form>
               {% endif %}
             </div>

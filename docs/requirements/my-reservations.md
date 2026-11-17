@@ -6,7 +6,7 @@
 
 **Výsledek:** Osobní přehled obsahuje pouze rezervace přihlášeného uživatele ve všech pěti stavech. Uvádí sportoviště, lokalitu, datum, začátek, konec a stav. Přehled je řazen sestupně podle začátku, při shodě podle ID.
 
-**Časové pravidlo:** Čekající žádost s dosaženým začátkem se zobrazí jako `EXPIRED`, i pokud databázová expirace ještě nebyla provedena. Prohlížení samo databázi nemění. Tlačítko zrušení je dostupné jen u platné čekající nebo potvrzené rezervace před začátkem; server změnu znovu ověří podle REQ-05.
+**Časové pravidlo:** Čekající žádost s dosaženým začátkem se zobrazí jako `EXPIRED`, i pokud databázová expirace ještě nebyla provedena. Prohlížení samo databázi nemění. Přehled ukazuje uloženou storno lhůtu konkrétní rezervace. U potvrzené rezervace uvádí poslední čas pro zrušení (Europe/Prague), případně důvod, že lhůta již uplynula; nulu vysvětluje jako možnost zrušení kdykoliv před začátkem. Tlačítko vychází ze stejného výpočtu TimeRules jako serverové rozhodnutí: čekající žádost před začátkem, potvrzená před začátkem a nejpozději na uložené storno hranici. Server změnu při odeslání znovu ověří podle REQ-05. Aktuální nastavení sportoviště nemění podmínky zobrazené u existující rezervace.
 
 **Alternativy:** Bez vlastních rezervací → srozumitelná zpráva o prázdném přehledu. Nepřihlášený návštěvník → veřejný katalog bez osobního seznamu. Správce vidí cizí čekající žádosti výhradně v odděleném přehledu REQ-11.
 

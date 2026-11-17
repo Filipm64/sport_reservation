@@ -116,5 +116,37 @@ class TimeRules:
         return any(interval.overlaps(existing) for existing in confirmed_intervals)
 
     def validate_cancellation(self, reservation, now):
-        if now >= reservation.interval.start:
+        if now.astimezone(UTC) >= reservation.interval.start.astimezone(UTC):
             raise ReservationError('conflict', 'Reservation has already started.')
+        if reservation.status == 'CONFIRMED' and not self.is_cancellation_open(
+            reservation.interval.start, reservation.cancellation_notice_minutes, now,
+        ):
+            raise ReservationError(
+                'cancellation_closed',
+                f'Cancellation requires at least {reservation.cancellation_notice_minutes} minutes before start.',
+            )
+
+    def cancellation_deadline(self, starts_at, notice_minutes):
+        # Very large valid settings may put the deadline before datetime's range.
+        try:
+            return starts_at.astimezone(UTC) - timedelta(minutes=notice_minutes)
+        except OverflowError:
+            return datetime.min.replace(tzinfo=UTC)
+
+    def can_cancel(self, listing, now):
+        if now.astimezone(UTC) >= listing.starts_at.astimezone(UTC):
+            return False
+        return listing.status == 'PENDING_APPROVAL' or (
+            listing.status == 'CONFIRMED' and self.is_cancellation_open(
+                listing.starts_at, listing.cancellation_notice_minutes, now,
+            )
+        )
+
+    def is_cancellation_open(self, starts_at, notice_minutes, now):
+        return (now.astimezone(UTC) < starts_at.astimezone(UTC)
+                and now.astimezone(UTC) <= self.cancellation_deadline(starts_at, notice_minutes))
+
+    def cancellation_deadline_label(self, starts_at, notice_minutes):
+        local = timezone.localtime(self.cancellation_deadline(starts_at, notice_minutes))
+        # An explicit offset distinguishes both occurrences of the repeated DST hour.
+        return f'{local.day}. {local.month}. {local.year} {local:%H:%M:%S %Z} (UTC{local:%z})'

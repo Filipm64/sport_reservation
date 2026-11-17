@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from concurrent.futures import ThreadPoolExecutor
 from datetime import time, timedelta
 from threading import Barrier
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.db import connection, connections
@@ -32,6 +33,7 @@ class ReservationConcurrencyTests(TransactionTestCase):
 
     def reservation(self, pending=False):
         return Reservation.objects.create(
+            cancellation_notice_minutes=0,
             user=self.user, resource=self.resource, starts_at=self.start,
             ends_at=self.start + timedelta(hours=1),
             status='PENDING_APPROVAL' if pending else 'CONFIRMED',
@@ -100,6 +102,39 @@ class ReservationConcurrencyTests(TransactionTestCase):
         self.assertIn(results[0], (200, 409))
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, 'CANCELLED')
+
+    def test_approve_racing_cancel_after_notice_deadline_has_serial_outcome(self):
+        reservation = self.reservation(pending=True)
+        Reservation.objects.filter(pk=reservation.pk).update(cancellation_notice_minutes=120)
+        with patch('reservations.rules.TimeRules.now', return_value=self.start - timedelta(hours=1)):
+            results = self.race(
+                (views.approve_reservation, reservation.pk, self.staff),
+                (views.cancel_reservation, reservation.pk, self.user),
+            )
+        self.assertIn(results, ([200, 409], [409, 200]))
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, 'CONFIRMED' if results[0] == 200 else 'CANCELLED')
+        self.assertEqual(reservation.cancellation_notice_minutes, 120)
+
+    def test_notice_change_racing_creation_saves_one_committed_setting(self):
+        def change_setting(request, reservation_id):
+            # The admin also updates Resource inside an atomic transaction.
+            from django.db import transaction
+            with transaction.atomic():
+                Resource.objects.filter(pk=self.resource.pk).update(cancellation_notice_minutes=240)
+            return SimpleNamespace(status_code=200)
+
+        results = self.race(
+            (views.create_reservation, None, self.user),
+            (change_setting, self.resource.pk, self.staff),
+        )
+        self.assertEqual(results, [201, 200])
+        reservation = Reservation.objects.get()
+        self.assertIn(reservation.cancellation_notice_minutes, (120, 240))
+        saved_notice = reservation.cancellation_notice_minutes
+        Resource.objects.filter(pk=self.resource.pk).update(cancellation_notice_minutes=60)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.cancellation_notice_minutes, saved_notice)
 
 
     def test_expiration_process_racing_approval_uses_shared_database(self):

@@ -26,6 +26,7 @@ class ResourceListing:
     closes_at: str
     is_available: bool
     requires_approval: bool
+    cancellation_notice_minutes: int
 
 
 @dataclass(frozen=True)
@@ -37,6 +38,10 @@ class ReservationListing:
     ends_at: datetime
     status: str
     username: str
+    cancellation_notice_minutes: int
+    cancellation_deadline: datetime | None = None
+    cancellation_deadline_label: str = ''
+    can_cancel: bool = False
 
 
 @dataclass(frozen=True)
@@ -46,6 +51,7 @@ class Resource:
     requires_approval: bool
     opens_at: time
     closes_at: time
+    cancellation_notice_minutes: int = 120
 
 
 @dataclass(frozen=True)
@@ -82,6 +88,7 @@ class Reservation:
     resource: Resource
     interval: TimeInterval
     status: str
+    cancellation_notice_minutes: int
     approval_request: ApprovalRequest | None = None
 
     def is_pending(self):

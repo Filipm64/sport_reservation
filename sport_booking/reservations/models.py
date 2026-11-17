@@ -18,6 +18,10 @@ class Resource(models.Model):
     closes_at = models.TimeField()
     is_available = models.BooleanField(default=True)
     requires_approval = models.BooleanField(default=False)
+    cancellation_notice_minutes = models.PositiveIntegerField(
+        default=120, verbose_name='Storno lhůta (minuty)',
+        help_text='Platí pouze pro nově vytvořené rezervace. 0 = kdykoliv před začátkem.',
+    )
 
     def clean(self):
         super().clean()
@@ -43,6 +47,9 @@ class Reservation(models.Model):
     status = models.CharField(max_length=20, choices=Status)
     created_at = models.DateTimeField(auto_now_add=True)
     approval_requested_at = models.DateTimeField(null=True, blank=True)
+    cancellation_notice_minutes = models.PositiveIntegerField(
+        verbose_name='Uložená storno lhůta (minuty)',
+    )
 
     class Meta:
         constraints = [

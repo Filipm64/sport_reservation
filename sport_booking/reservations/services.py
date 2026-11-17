@@ -17,6 +17,7 @@ class ReservationService:
             reservation = Reservation(
                 None, actor.id, resource, interval,
                 'PENDING_APPROVAL' if resource.requires_approval else 'CONFIRMED',
+                resource.cancellation_notice_minutes,
                 ApprovalRequest(now) if resource.requires_approval else None,
             )
             self._decide_confirmation(reservation, store, now)

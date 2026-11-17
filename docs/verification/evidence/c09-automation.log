@@ -1,0 +1,303 @@
+Verification started: 2026-11-17T17:40:32.674385+00:00
+OS: macOS-27.2.1-arm64-arm-64bit-Mach-O
+Python: 3.14.6 (main, Jun 10 2026, 10:03:53) [Clang 21.0.0 (clang-2100.0.123.102)]
+SQLite: 3.53.2
+Installed packages: Django==6.1.1, asgiref==3.12.1, pip==26.1.2, sqlparse==0.6.0
+
+Command: git rev-parse HEAD
+ae698d94a0daa9b31eea3fde9730b6cd40891d0f
+Exit code: 0
+
+Command: git status --short
+ M .DS_Store
+ M .gitignore
+ M README.md
+ M assigments/README.md
+ M docs/README.md
+ M docs/design/detailed-design.md
+ M docs/design/domain-model.md
+ M docs/design/reservation-lifecycle.md
+ M docs/design/web-portal.md
+ M docs/history/evidence-and-evolution.md
+ M docs/requirements/C08-change-request.md
+ M docs/requirements/business-rules.md
+ M docs/requirements/cancel-reservation.md
+ M docs/requirements/my-reservations.md
+ M docs/verification/README.md
+ M docs/verification/coverage.md
+ M docs/verification/traceability.json
+ M sport_booking/db.sqlite3
+ M sport_booking/reservations/admin.py
+ M sport_booking/reservations/api.py
+ M sport_booking/reservations/domain.py
+ M sport_booking/reservations/models.py
+ M sport_booking/reservations/persistence.py
+ M sport_booking/reservations/portal.py
+ M sport_booking/reservations/rules.py
+ M sport_booking/reservations/services.py
+ M sport_booking/reservations/templates/reservations/home.html
+ M sport_booking/reservations/test_c08_baseline.py
+ M sport_booking/reservations/test_concurrency.py
+ M sport_booking/reservations/test_migrations.py
+ M sport_booking/reservations/test_portal_requirements.py
+ M sport_booking/reservations/test_schedule.py
+ M sport_booking/reservations/tests.py
+ M sport_booking/reservations/web_views.py
+?? .github/
+?? assigments/C09_ZADANI_CZ_EN_PODROBNE.html
+?? docs/verification/c09-release-record.md
+?? docs/verification/evidence/c09-implementation.log
+?? scripts/check.py
+?? sport_booking/reservations/migrations/0004_cancellation_notice.py
+?? sport_booking/reservations/test_cancellation_notice.py
+Exit code: 0
+Test DB: /var/folders/qc/4brd7qys4p99lf369dl7g1mc0000gn/T/sport-booking-check-k61lmbm0/tests.sqlite3
+
+Command: /Users/filipmatus/coding/VSB/SWI/sport_reservation/.venv/bin/python -m pip check
+WARNING: The directory '/Users/filipmatus/Library/Caches/pip' or its parent directory is not owned or is not writable by the current user. The cache has been disabled. Check the permissions and owner of that directory. If executing pip with sudo, you should use sudo's -H flag.
+No broken requirements found.
+Exit code: 0
+
+Command: /Users/filipmatus/coding/VSB/SWI/sport_reservation/.venv/bin/python sport_booking/manage.py check
+System check identified no issues (0 silenced).
+Exit code: 0
+
+Command: /Users/filipmatus/coding/VSB/SWI/sport_reservation/.venv/bin/python sport_booking/manage.py makemigrations --check --dry-run
+No changes detected
+Exit code: 0
+
+Command: /Users/filipmatus/coding/VSB/SWI/sport_reservation/.venv/bin/python scripts/update_docs.py --check
+Documentation links and traceability are up to date.
+Exit code: 0
+
+Command: /Users/filipmatus/coding/VSB/SWI/sport_reservation/.venv/bin/python sport_booking/manage.py test reservations --noinput --verbosity 2
+Creating test database for alias 'default' ('/var/folders/qc/4brd7qys4p99lf369dl7g1mc0000gn/T/sport-booking-check-k61lmbm0/tests.sqlite3')...
+Destroying old test database for alias 'default' ('/var/folders/qc/4brd7qys4p99lf369dl7g1mc0000gn/T/sport-booking-check-k61lmbm0/tests.sqlite3')...
+Found 123 test(s).
+Operations to perform:
+  Synchronize unmigrated apps: messages, staticfiles
+  Apply all migrations: admin, auth, contenttypes, reservations, sessions
+Synchronizing apps without migrations:
+  Creating tables...
+    Running deferred SQL...
+Running migrations:
+  Applying contenttypes.0001_initial... OK
+  Applying auth.0001_initial... OK
+  Applying admin.0001_initial... OK
+  Applying admin.0002_logentry_remove_auto_add... OK
+  Applying admin.0003_logentry_add_action_flag_choices... OK
+  Applying contenttypes.0002_remove_content_type_name... OK
+  Applying auth.0002_alter_permission_name_max_length... OK
+  Applying auth.0003_alter_user_email_max_length... OK
+  Applying auth.0004_alter_user_username_opts... OK
+  Applying auth.0005_alter_user_last_login_null... OK
+  Applying auth.0006_require_contenttypes_0002... OK
+  Applying auth.0007_alter_validators_add_error_messages... OK
+  Applying auth.0008_alter_user_username_max_length... OK
+  Applying auth.0009_alter_user_last_name_max_length... OK
+  Applying auth.0010_alter_group_name_max_length... OK
+  Applying auth.0011_update_proxy_permissions... OK
+  Applying auth.0012_alter_user_first_name_max_length... OK
+  Applying reservations.0001_initial... OK
+  Applying reservations.0002_remove_reservation_reservation_valid_status_and_more... OK
+  Applying reservations.0003_remove_draft_lifecycle... OK
+  Applying reservations.0004_cancellation_notice... OK
+  Applying sessions.0001_initial...test_expiration_is_idempotent_and_preserves_terminal_states (reservations.test_architecture.PersistenceFailureTests.test_expiration_is_idempotent_and_preserves_terminal_states) ... ok
+test_failed_automatic_rejection_rolls_back_created_reservation (reservations.test_architecture.PersistenceFailureTests.test_failed_automatic_rejection_rolls_back_created_reservation) ... ok
+test_failed_commit_rolls_back (reservations.test_architecture.PersistenceFailureTests.test_failed_commit_rolls_back) ... ok
+test_failed_competitor_rejection_rolls_back_winner_and_losers (reservations.test_architecture.PersistenceFailureTests.test_failed_competitor_rejection_rolls_back_winner_and_losers) ... ok
+test_failed_save_rolls_back_and_never_reports_success (reservations.test_architecture.PersistenceFailureTests.test_failed_save_rolls_back_and_never_reports_success) ... ok
+test_invalid_resource_identifier_is_rejected_without_creating (reservations.test_architecture.PersistenceFailureTests.test_invalid_resource_identifier_is_rejected_without_creating) ... ok
+test_admin_cannot_bypass_reservation_lifecycle (reservations.tests.ReservationApiTests.test_admin_cannot_bypass_reservation_lifecycle) ... ok
+test_approval_request_does_not_block_until_staff_approves (reservations.tests.ReservationApiTests.test_approval_request_does_not_block_until_staff_approves) ... ok
+test_authentication_ownership_and_unknown_resource (reservations.tests.ReservationApiTests.test_authentication_ownership_and_unknown_resource) ... ok
+test_automatic_creation_rejects_existing_pending_requests (reservations.tests.ReservationApiTests.test_automatic_creation_rejects_existing_pending_requests) ... ok
+test_availability_checks_confirmed_only_and_half_open_edges (reservations.tests.ReservationApiTests.test_availability_checks_confirmed_only_and_half_open_edges) ... ok
+test_cancel_confirmed_releases_resource_and_rejects_repeat (reservations.tests.ReservationApiTests.test_cancel_confirmed_releases_resource_and_rejects_repeat) ... ok
+test_confirm_endpoint_removed_and_terminal_states_cannot_reopen (reservations.tests.ReservationApiTests.test_confirm_endpoint_removed_and_terminal_states_cannot_reopen) ... ok
+test_confirmation_rejects_only_overlapping_pending_same_resource (reservations.tests.ReservationApiTests.test_confirmation_rejects_only_overlapping_pending_same_resource) ... ok
+test_create_pending_checks_conflicts_and_inactive_resource (reservations.tests.ReservationApiTests.test_create_pending_checks_conflicts_and_inactive_resource) ... ok
+test_create_succeeds_and_rejects_invalid_interval (reservations.tests.ReservationApiTests.test_create_succeeds_and_rejects_invalid_interval) ... ok
+test_delayed_approval_succeeds_after_24_hours_before_start (reservations.tests.ReservationApiTests.test_delayed_approval_succeeds_after_24_hours_before_start) ... ok
+test_exact_time_limits_and_exceeded_limits (reservations.tests.ReservationApiTests.test_exact_time_limits_and_exceeded_limits) ... ok
+test_expiry_exact_deadline_on_approve_cancel_and_command (reservations.tests.ReservationApiTests.test_expiry_exact_deadline_on_approve_cancel_and_command) ... ok
+test_inactive_resource_and_invalid_availability (reservations.tests.ReservationApiTests.test_inactive_resource_and_invalid_availability) ... ok
+test_invalid_approval_decision_is_rejected_without_state_change (reservations.tests.ReservationApiTests.test_invalid_approval_decision_is_rejected_without_state_change) ... ok
+test_invalid_calendar_date_returns_error_without_creating (reservations.tests.ReservationApiTests.test_invalid_calendar_date_returns_error_without_creating) ... ok
+test_owner_can_cancel_pending_approval_but_not_after_start (reservations.tests.ReservationApiTests.test_owner_can_cancel_pending_approval_but_not_after_start) ... ok
+test_pending_request_remains_actionable_after_24_hours_until_start (reservations.tests.ReservationApiTests.test_pending_request_remains_actionable_after_24_hours_until_start) ... ok
+test_staff_can_reject_but_non_staff_cannot_decide (reservations.tests.ReservationApiTests.test_staff_can_reject_but_non_staff_cannot_decide) ... ok
+test_api_creation_rejects_outside_hours_for_both_resource_types (reservations.test_operating_hours.OperatingHoursTests.test_api_creation_rejects_outside_hours_for_both_resource_types) ... ok
+test_api_uses_local_operating_time_regardless_of_input_offset (reservations.test_operating_hours.OperatingHoursTests.test_api_uses_local_operating_time_regardless_of_input_offset) ... ok
+test_approval_rechecks_changed_operating_hours (reservations.test_operating_hours.OperatingHoursTests.test_approval_rechecks_changed_operating_hours) ... ok
+test_availability_is_unavailable_outside_operating_hours (reservations.test_operating_hours.OperatingHoursTests.test_availability_is_unavailable_outside_operating_hours) ... ok
+test_block_from_other_day_in_same_week_creates_correct_date (reservations.test_operating_hours.OperatingHoursTests.test_block_from_other_day_in_same_week_creates_correct_date) ... ok
+test_changing_operating_hours_does_not_cancel_existing_confirmations (reservations.test_operating_hours.OperatingHoursTests.test_changing_operating_hours_does_not_cancel_existing_confirmations) ... ok
+test_customer_and_guest_cannot_update_operating_hours (reservations.test_operating_hours.OperatingHoursTests.test_customer_and_guest_cannot_update_operating_hours) ... ok
+test_exact_opening_and_closing_boundaries_are_allowed (reservations.test_operating_hours.OperatingHoursTests.test_exact_opening_and_closing_boundaries_are_allowed) ... ok
+test_invalid_operating_hours_do_not_change_configuration (reservations.test_operating_hours.OperatingHoursTests.test_invalid_operating_hours_do_not_change_configuration) ... ok
+test_manual_web_creation_cannot_bypass_operating_hours (reservations.test_operating_hours.OperatingHoursTests.test_manual_web_creation_cannot_bypass_operating_hours) ... ok
+test_operating_hours_update_requires_post_and_csrf (reservations.test_operating_hours.OperatingHoursTests.test_operating_hours_update_requires_post_and_csrf) ... ok
+test_operating_hours_update_rolls_back_when_commit_fails (reservations.test_operating_hours.OperatingHoursTests.test_operating_hours_update_rolls_back_when_commit_fails) ... ok
+test_partial_hour_manual_interval_can_fit_and_overnight_is_rejected (reservations.test_operating_hours.OperatingHoursTests.test_partial_hour_manual_interval_can_fit_and_overnight_is_rejected) ... ok
+test_staff_can_update_operating_hours_without_admin_model_permissions (reservations.test_operating_hours.OperatingHoursTests.test_staff_can_update_operating_hours_without_admin_model_permissions) ... ok
+test_week_grid_excludes_closed_rows_and_disables_partial_hours (reservations.test_operating_hours.OperatingHoursTests.test_week_grid_excludes_closed_rows_and_disables_partial_hours) ... ok
+test_week_navigation_stays_inside_booking_horizon (reservations.test_operating_hours.OperatingHoursTests.test_week_navigation_stays_inside_booking_horizon) ... ok
+test_week_selection_is_limited_to_one_day (reservations.test_operating_hours.OperatingHoursTests.test_week_selection_is_limited_to_one_day) ... ok
+test_approval_resource_waits_for_staff_decision (reservations.test_portal.PortalTests.test_approval_resource_waits_for_staff_decision) ... ok
+test_availability_check_does_not_create_reservation (reservations.test_portal.PortalTests.test_availability_check_does_not_create_reservation) ... ok
+test_booking_creation_confirms_in_one_step (reservations.test_portal.PortalTests.test_booking_creation_confirms_in_one_step) ... ok
+test_conflicting_web_creation_does_not_create_second_record (reservations.test_portal.PortalTests.test_conflicting_web_creation_does_not_create_second_record) ... ok
+test_customer_can_register_and_is_logged_in (reservations.test_portal.PortalTests.test_customer_can_register_and_is_logged_in) ... ok
+test_customer_cannot_cancel_another_users_reservation (reservations.test_portal.PortalTests.test_customer_cannot_cancel_another_users_reservation) ... ok
+test_home_displays_public_venue_catalog (reservations.test_portal.PortalTests.test_home_displays_public_venue_catalog) ... ok
+test_non_staff_cannot_approve_pending_reservation (reservations.test_portal.PortalTests.test_non_staff_cannot_approve_pending_reservation) ... ok
+test_staff_approval_rejects_competing_web_request (reservations.test_portal.PortalTests.test_staff_approval_rejects_competing_web_request) ... ok
+test_unknown_booking_action_does_not_create_reservation (reservations.test_portal.PortalTests.test_unknown_booking_action_does_not_create_reservation) ... ok
+test_account_forms_require_csrf (reservations.test_portal_requirements.PortalRequirementTests.test_account_forms_require_csrf) ... ok
+test_account_forms_work_with_valid_csrf_tokens (reservations.test_portal_requirements.PortalRequirementTests.test_account_forms_work_with_valid_csrf_tokens) ... ok
+test_authenticated_user_cannot_create_second_account (reservations.test_portal_requirements.PortalRequirementTests.test_authenticated_user_cannot_create_second_account) ... ok
+test_customer_sees_only_own_reservations_in_all_five_states (reservations.test_portal_requirements.PortalRequirementTests.test_customer_sees_only_own_reservations_in_all_five_states) ... ok
+test_customer_with_no_reservations_sees_empty_state (reservations.test_portal_requirements.PortalRequirementTests.test_customer_with_no_reservations_sees_empty_state) ... ok
+test_empty_public_catalog_is_displayed_without_error (reservations.test_portal_requirements.PortalRequirementTests.test_empty_public_catalog_is_displayed_without_error) ... ok
+test_guest_and_customer_cannot_see_staff_queue (reservations.test_portal_requirements.PortalRequirementTests.test_guest_and_customer_cannot_see_staff_queue) ... ok
+test_invalid_registration_does_not_create_or_authenticate_user (reservations.test_portal_requirements.PortalRequirementTests.test_invalid_registration_does_not_create_or_authenticate_user) ... ok
+test_login_accepts_active_customer_and_staff (reservations.test_portal_requirements.PortalRequirementTests.test_login_accepts_active_customer_and_staff) ... ok
+test_login_does_not_redirect_to_untrusted_host (reservations.test_portal_requirements.PortalRequirementTests.test_login_does_not_redirect_to_untrusted_host) ... ok
+test_login_rejects_invalid_credentials_and_inactive_account (reservations.test_portal_requirements.PortalRequirementTests.test_login_rejects_invalid_credentials_and_inactive_account) ... ok
+test_logout_requires_post_and_ends_session (reservations.test_portal_requirements.PortalRequirementTests.test_logout_requires_post_and_ends_session) ... ok
+test_personal_list_displays_effective_expiry_without_writing_database (reservations.test_portal_requirements.PortalRequirementTests.test_personal_list_displays_effective_expiry_without_writing_database) ... ok
+test_public_catalog_shows_metadata_and_operating_availability (reservations.test_portal_requirements.PortalRequirementTests.test_public_catalog_shows_metadata_and_operating_availability) ... ok
+test_registration_creates_only_customer_and_authenticates (reservations.test_portal_requirements.PortalRequirementTests.test_registration_creates_only_customer_and_authenticates) ... ok
+test_staff_personal_list_still_contains_only_own_reservations (reservations.test_portal_requirements.PortalRequirementTests.test_staff_personal_list_still_contains_only_own_reservations) ... ok
+test_staff_queue_displays_empty_state (reservations.test_portal_requirements.PortalRequirementTests.test_staff_queue_displays_empty_state) ... ok
+test_staff_queue_shows_only_pending_before_start_without_mutation (reservations.test_portal_requirements.PortalRequirementTests.test_staff_queue_shows_only_pending_before_start_without_mutation) ... ok
+test_approval_required_resource_creates_pending_from_blocks (reservations.test_schedule.ScheduleTests.test_approval_required_resource_creates_pending_from_blocks) ... ok
+test_availability_from_blocks_is_read_only (reservations.test_schedule.ScheduleTests.test_availability_from_blocks_is_read_only) ... ok
+test_confirmed_partial_overlap_blocks_whole_hour_and_edges_remain_free (reservations.test_schedule.ScheduleTests.test_confirmed_partial_overlap_blocks_whole_hour_and_edges_remain_free) ... ok
+test_grid_renders_hour_blocks_and_manual_option (reservations.test_schedule.ScheduleTests.test_grid_renders_hour_blocks_and_manual_option) ... ok
+test_guest_cannot_submit_grid_booking (reservations.test_schedule.ScheduleTests.test_guest_cannot_submit_grid_booking) ... ok
+test_invalid_resource_and_day_do_not_create_reservation (reservations.test_schedule.ScheduleTests.test_invalid_resource_and_day_do_not_create_reservation) ... ok
+test_manual_input_keeps_two_hour_server_limit (reservations.test_schedule.ScheduleTests.test_manual_input_keeps_two_hour_server_limit) ... ok
+test_one_or_two_blocks_create_exact_one_or_two_hour_reservation (reservations.test_schedule.ScheduleTests.test_one_or_two_blocks_create_exact_one_or_two_hour_reservation) ... ok
+test_past_and_beyond_thirty_days_are_disabled (reservations.test_schedule.ScheduleTests.test_past_and_beyond_thirty_days_are_disabled) ... ok
+test_pending_other_resource_and_cancelled_do_not_block (reservations.test_schedule.ScheduleTests.test_pending_other_resource_and_cancelled_do_not_block) ... ok
+test_slot_interval_is_derived_on_server_not_client_values (reservations.test_schedule.ScheduleTests.test_slot_interval_is_derived_on_server_not_client_values) ... ok
+test_stale_schedule_does_not_bypass_atomic_conflict_check (reservations.test_schedule.ScheduleTests.test_stale_schedule_does_not_bypass_atomic_conflict_check) ... ok
+test_three_nonadjacent_duplicate_and_unknown_blocks_are_rejected (reservations.test_schedule.ScheduleTests.test_three_nonadjacent_duplicate_and_unknown_blocks_are_rejected) ... ok
+test_create_and_reload_all_fields_and_relations (reservations.tests.ReservationPersistenceTests.test_create_and_reload_all_fields_and_relations) ... ok
+test_database_rejects_unknown_status (reservations.tests.ReservationPersistenceTests.test_database_rejects_unknown_status) ... ok
+test_database_rejects_zero_or_negative_duration (reservations.tests.ReservationPersistenceTests.test_database_rejects_zero_or_negative_duration) ... ok
+test_database_requires_user_and_resource (reservations.tests.ReservationPersistenceTests.test_database_requires_user_and_resource) ... ok
+test_reservation_protects_related_records_from_deletion (reservations.tests.ReservationPersistenceTests.test_reservation_protects_related_records_from_deletion) ... ok
+test_status_updates_survive_reload (reservations.tests.ReservationPersistenceTests.test_status_updates_survive_reload) ... ok
+test_entry_points_do_not_access_orm_or_mutate_reservation_state (reservations.test_architecture.ArchitectureDependencyTests.test_entry_points_do_not_access_orm_or_mutate_reservation_state) ... ok
+test_only_allowed_dependencies_are_used_by_logical_parts (reservations.test_architecture.ArchitectureDependencyTests.test_only_allowed_dependencies_are_used_by_logical_parts) ... ok
+test_cancel_one_second_before_start (reservations.test_c08_baseline.CancellationBaselineTests.test_cancel_one_second_before_start) ...  OK
+System check identified no issues (0 silenced).
+Expired 0 reservation(s).
+Expired 1 reservation(s).
+Expired 1 reservation(s).
+Expired 0 reservation(s).
+
+TC-C08-01: create_at=2026-11-09T09:00:00+00:00, cancel_at=2026-11-10T09:59:59+00:00
+Step 1: create HTTP 201: {'id': 1, 'status': 'CONFIRMED', 'resource_id': 1, 'starts_at': '2026-11-10T10:00:00+00:00', 'ends_at': '2026-11-10T11:00:00+00:00'}
+Independent committed SQL read: [(1, 1, 1, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CONFIRMED')]
+Step 3: cancel HTTP 200: {'id': 1, 'status': 'CANCELLED', 'resource_id': 1, 'starts_at': '2026-11-10T10:00:00+00:00', 'ends_at': '2026-11-10T11:00:00+00:00'}
+Independent committed SQL read: [(1, 1, 1, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CANCELLED')]
+TC-C08-01: PASS
+ok
+test_refuse_cancel_at_start (reservations.test_c08_baseline.CancellationBaselineTests.test_refuse_cancel_at_start) ... 
+TC-C08-02: create_at=2026-11-09T09:00:00+00:00, cancel_at=2026-11-10T10:00:00+00:00
+Step 1: create HTTP 201: {'id': 2, 'status': 'CONFIRMED', 'resource_id': 2, 'starts_at': '2026-11-10T10:00:00+00:00', 'ends_at': '2026-11-10T11:00:00+00:00'}
+Independent committed SQL read: [(2, 2, 2, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CONFIRMED')]
+Step 3: cancel HTTP 409: {'error': 'Reservation has already started.'}
+Independent committed SQL read: [(2, 2, 2, '2026-11-10 10:00:00', '2026-11-10 11:00:00', 'CONFIRMED')]
+TC-C08-02: PASS
+ok
+test_dst_uses_elapsed_utc_minutes_and_shared_display_rule (reservations.test_cancellation_notice.CancellationClockTests.test_dst_uses_elapsed_utc_minutes_and_shared_display_rule) ... ok
+test_large_valid_notice_does_not_overflow_deadline (reservations.test_cancellation_notice.CancellationClockTests.test_large_valid_notice_does_not_overflow_deadline) ... ok
+test_admin_change_affects_only_future_reservations (reservations.test_cancellation_notice.CancellationNoticeTests.test_admin_change_affects_only_future_reservations) ... C09 independent committed SQL: (3, 3, 3, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (4, 3, 3, '2026-11-20 12:00:00', '2026-11-20 13:00:00', 'CONFIRMED', 240)
+C09 independent committed SQL: (4, 3, 3, '2026-11-20 12:00:00', '2026-11-20 13:00:00', 'CONFIRMED', 240)
+ok
+test_approval_preserves_saved_notice_after_configuration_change (reservations.test_cancellation_notice.CancellationNoticeTests.test_approval_preserves_saved_notice_after_configuration_change) ... C09 independent committed SQL: (5, 5, 4, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 0)
+C09 independent committed SQL: (6, 5, 4, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+ok
+test_both_serial_orders_of_approval_and_cancellation_after_deadline (reservations.test_cancellation_notice.CancellationNoticeTests.test_both_serial_orders_of_approval_and_cancellation_after_deadline) ... C09 independent committed SQL: (7, 7, 5, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (8, 7, 5, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 120)
+ok
+test_cancellation_exact_boundaries_for_multiple_notices (reservations.test_cancellation_notice.CancellationNoticeTests.test_cancellation_exact_boundaries_for_multiple_notices) ... C09 independent committed SQL: (9, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (9, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 120)
+C09 independent committed SQL: (10, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (10, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 120)
+C09 independent committed SQL: (11, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (11, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (12, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 240)
+C09 independent committed SQL: (12, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 240)
+C09 independent committed SQL: (13, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 240)
+C09 independent committed SQL: (13, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 240)
+C09 independent committed SQL: (14, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 240)
+C09 independent committed SQL: (14, 9, 6, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 240)
+ok
+test_cancellation_failure_rolls_back_status_and_saved_notice (reservations.test_cancellation_notice.CancellationNoticeTests.test_cancellation_failure_rolls_back_status_and_saved_notice) ... C09 independent committed SQL: (15, 11, 7, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (15, 11, 7, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+ok
+test_customer_cannot_choose_notice_via_api_or_web (reservations.test_cancellation_notice.CancellationNoticeTests.test_customer_cannot_choose_notice_via_api_or_web) ... C09 independent committed SQL: (16, 13, 8, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (17, 13, 8, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+ok
+test_dst_deadline_is_displayed_in_correct_local_offset (reservations.test_cancellation_notice.CancellationNoticeTests.test_dst_deadline_is_displayed_in_correct_local_offset) ... ok
+test_invalid_or_unauthorized_setting_does_not_change_resource (reservations.test_cancellation_notice.CancellationNoticeTests.test_invalid_or_unauthorized_setting_does_not_change_resource) ... ok
+test_late_cancellation_keeps_allocation_and_rejected_competitors (reservations.test_cancellation_notice.CancellationNoticeTests.test_late_cancellation_keeps_allocation_and_rejected_competitors) ... C09 independent committed SQL: (21, 20, 11, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (22, 20, 11, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (20, 20, 11, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'REJECTED', 120)
+ok
+test_ownership_authentication_and_repeat_preserve_saved_terms (reservations.test_cancellation_notice.CancellationNoticeTests.test_ownership_authentication_and_repeat_preserve_saved_terms) ... C09 independent committed SQL: (23, 22, 12, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (23, 22, 12, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 120)
+ok
+test_pending_can_be_withdrawn_until_start_then_expires (reservations.test_cancellation_notice.CancellationNoticeTests.test_pending_can_be_withdrawn_until_start_then_expires) ... C09 independent committed SQL: (24, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 0)
+C09 independent committed SQL: (25, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'EXPIRED', 0)
+C09 independent committed SQL: (26, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'EXPIRED', 0)
+C09 independent committed SQL: (27, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 120)
+C09 independent committed SQL: (28, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'EXPIRED', 120)
+C09 independent committed SQL: (29, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'EXPIRED', 120)
+C09 independent committed SQL: (30, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 240)
+C09 independent committed SQL: (31, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'EXPIRED', 240)
+C09 independent committed SQL: (32, 24, 13, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'EXPIRED', 240)
+ok
+test_saved_notice_is_read_only_in_reservation_admin (reservations.test_cancellation_notice.CancellationNoticeTests.test_saved_notice_is_read_only_in_reservation_admin) ... C09 independent committed SQL: (33, 26, 14, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+ok
+test_stale_web_page_cannot_bypass_deadline (reservations.test_cancellation_notice.CancellationNoticeTests.test_stale_web_page_cannot_bypass_deadline) ... C09 independent committed SQL: (34, 28, 15, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+ok
+test_web_notice_and_read_only_listing_use_saved_value (reservations.test_cancellation_notice.CancellationNoticeTests.test_web_notice_and_read_only_listing_use_saved_value) ... C09 independent committed SQL: (35, 30, 16, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+ok
+test_zero_notice_and_started_reservations (reservations.test_cancellation_notice.CancellationNoticeTests.test_zero_notice_and_started_reservations) ... C09 independent committed SQL: (36, 32, 17, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CANCELLED', 0)
+C09 independent committed SQL: (37, 32, 17, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 0)
+C09 independent committed SQL: (38, 32, 17, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 0)
+C09 independent committed SQL: (39, 32, 17, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (40, 32, 17, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+C09 independent committed SQL: (41, 32, 17, '2026-11-20 10:00:00', '2026-11-20 11:00:00', 'CONFIRMED', 120)
+ok
+test_approve_racing_cancel_after_notice_deadline_has_serial_outcome (reservations.test_concurrency.ReservationConcurrencyTests.test_approve_racing_cancel_after_notice_deadline_has_serial_outcome) ... ok
+test_approve_racing_cancel_finishes_cancelled (reservations.test_concurrency.ReservationConcurrencyTests.test_approve_racing_cancel_finishes_cancelled) ... ok
+test_conflicting_approvals_commit_only_one_allocation (reservations.test_concurrency.ReservationConcurrencyTests.test_conflicting_approvals_commit_only_one_allocation) ... ok
+test_conflicting_creations_commit_only_one_allocation (reservations.test_concurrency.ReservationConcurrencyTests.test_conflicting_creations_commit_only_one_allocation) ... ok
+test_create_racing_approval_commits_only_one_allocation (reservations.test_concurrency.ReservationConcurrencyTests.test_create_racing_approval_commits_only_one_allocation) ... ok
+test_expiration_process_racing_approval_uses_shared_database (reservations.test_concurrency.ReservationConcurrencyTests.test_expiration_process_racing_approval_uses_shared_database) ... ok
+test_notice_change_racing_creation_saves_one_committed_setting (reservations.test_concurrency.ReservationConcurrencyTests.test_notice_change_racing_creation_saves_one_committed_setting) ... ok
+test_existing_terms_survive_migration_and_new_creation_uses_resource_notice (reservations.test_migrations.CancellationNoticeMigrationTests.test_existing_terms_survive_migration_and_new_creation_uses_resource_notice) ... ok
+test_legacy_drafts_are_preserved_as_cancelled (reservations.test_migrations.ReservationLifecycleMigrationTests.test_legacy_drafts_are_preserved_as_cancelled) ... ok
+test_daylight_saving_days_have_real_hour_blocks (reservations.test_schedule.HourBlockRuleTests.test_daylight_saving_days_have_real_hour_blocks) ... ok
+test_two_hour_limit_uses_elapsed_time_across_dst (reservations.test_schedule.HourBlockRuleTests.test_two_hour_limit_uses_elapsed_time_across_dst) ... ok
+test_unavailable_resource_disables_all_blocks (reservations.test_schedule.HourBlockRuleTests.test_unavailable_resource_disables_all_blocks) ... ok
+test_week_table_represents_dst_gap_and_repeated_hour (reservations.test_schedule.HourBlockRuleTests.test_week_table_represents_dst_gap_and_repeated_hour) ... ok
+
+----------------------------------------------------------------------
+Ran 123 tests in 6.472s
+
+OK
+Destroying test database for alias 'default' ('/var/folders/qc/4brd7qys4p99lf369dl7g1mc0000gn/T/sport-booking-check-k61lmbm0/tests.sqlite3')...
+C09 migration: all five legacy states and fields preserved; notices 0, new creation 120.
+Exit code: 0
+
+Verification: PASS

@@ -2,6 +2,8 @@
 
 [C08 — Change Request: storno politika rezervací](requirements/C08-change-request.md)
 obsahuje plánovanou změnu pro C09 a stav jejího review.
+[Záznam C09](verification/c09-release-record.md) vymezuje výchozí commit,
+rozsah implementace a plán nových i regresních testů.
 
 Začněte [přehledem systému](requirements/overview.md), vyberte [požadavek](requirements/README.md) a pokračujte přes [vazby na návrh, implementaci a testy](verification/coverage.md).
 

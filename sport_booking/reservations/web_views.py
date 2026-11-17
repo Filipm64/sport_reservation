@@ -244,6 +244,8 @@ def home(request):
         'week_links': week_links,
         'selection_mode': request.POST.get('selection_mode', 'manual') if request.method == 'POST' else 'slots',
         'resources': resources,
+        'booking_resource': next((row for row in resources
+                                  if str(row.id) == str(filter_data['resource_id'])), None),
         'reservations': reservations,
         'pending_reservations': pending,
         'now': now,
@@ -307,6 +309,7 @@ def _error_message(error):
             'a nesmí přesáhnout 2 hodiny.'
         ),
         'outside_hours': 'Celá rezervace musí být v provozní době sportoviště.',
+        'cancellation_closed': 'Storno lhůta této rezervace již uplynula. Rezervaci nelze zrušit.',
         'conflict': 'Tuto změnu nelze provést. Ověřte stav rezervace a dostupnost.',
         'expired': 'Žádost o schválení již vypršela.',
     }

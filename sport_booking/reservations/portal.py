@@ -16,7 +16,13 @@ class PortalQueries:
     def reservations_for_user(self, user_id, now):
         with self.store_factory() as store:
             reservations = store.list_reservations(user_id=user_id)
-        return [replace(row, status=self.rules.display_status(row, now))
+        return [replace(row, status=self.rules.display_status(row, now),
+                        cancellation_deadline=self.rules.cancellation_deadline(
+                            row.starts_at, row.cancellation_notice_minutes),
+                        cancellation_deadline_label=self.rules.cancellation_deadline_label(
+                            row.starts_at, row.cancellation_notice_minutes)
+                        if self.rules.can_cancel(row, now) else '',
+                        can_cancel=self.rules.can_cancel(row, now))
                 for row in reservations]
 
     def pending_reservations(self, now):

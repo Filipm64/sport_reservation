@@ -115,6 +115,7 @@ class ScheduleTests(TestCase):
     def test_confirmed_partial_overlap_blocks_whole_hour_and_edges_remain_free(self):
         blocks = self.blocks()
         Reservation.objects.create(
+            cancellation_notice_minutes=0,
             user=self.user, resource=self.resource,
             starts_at=blocks[10].start + timedelta(minutes=30),
             ends_at=blocks[10].end, status='CONFIRMED',
@@ -134,7 +135,7 @@ class ScheduleTests(TestCase):
                                         location='Praha', opens_at='08:00', closes_at='22:00')
         for resource, status in ((self.resource, 'PENDING_APPROVAL'), (self.resource, 'CANCELLED'),
                                  (other, 'CONFIRMED')):
-            Reservation.objects.create(user=self.user, resource=resource, starts_at=start,
+            Reservation.objects.create(cancellation_notice_minutes=0, user=self.user, resource=resource, starts_at=start,
                                        ends_at=start + timedelta(hours=1), status=status,
                                        approval_requested_at=self.now)
         self.assertTrue(self.blocks()[10].available)
@@ -150,7 +151,7 @@ class ScheduleTests(TestCase):
     def test_stale_schedule_does_not_bypass_atomic_conflict_check(self):
         stale = build_portal_queries().weekly_schedule(self.resource.pk, self.day, self.now)
         daily = self.blocks()
-        Reservation.objects.create(user=self.user, resource=self.resource,
+        Reservation.objects.create(cancellation_notice_minutes=0, user=self.user, resource=self.resource,
                                    starts_at=daily[10].start, ends_at=daily[10].end, status='CONFIRMED')
         with patch('reservations.portal.PortalQueries.weekly_schedule', return_value=stale):
             response = self.post_blocks(['10'])

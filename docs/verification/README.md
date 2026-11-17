@@ -5,6 +5,8 @@
 - [Aktuální týdenní tabulka a provozní doba — REQ-12/13](weekly-operating-hours.md)
 - [C08: baseline storno politiky a dva provedené integrační testy](c08-cancellation-baseline.md)
 - [C08 — Change Request: pravidla, dopady, varianty a předávka do C09](../requirements/C08-change-request.md)
+- [C09 — rozsah změny, testovací plán a release záznam](c09-release-record.md)
+- [C09 — automatizace a GitHub Actions](c09-release-record.md#6-automatizace-a-github-actions) · [lokální log](evidence/c09-automation.log)
 - [REQ-12: hodinový rozvrh, limit 2 hodin a ověření UI](hourly-schedule.md)
 - [REQ-07 až REQ-11: ověření portálu a vztah k zadáním](portal-requirements.md)
 - [Aktuální životní cyklus, migrace a ověření](reservation-lifecycle.md)
@@ -20,7 +22,7 @@
 
 ## Údržba vazeb
 
-[traceability.json](traceability.json) je jediný registr vazeb. Každý záznam má stabilní ID, stránku požadavku, ID pravidel, návrhové dokumenty a seznamy symbolů implementace a testů. Cesty jsou od kořene repozitáře; symbol je například `ReservationApiTests.test_delayed_approval_succeeds_before_timeout`.
+[traceability.json](traceability.json) je jediný registr vazeb. Každý záznam má stabilní ID, stránku požadavku, ID pravidel, návrhové dokumenty a seznamy symbolů implementace a testů. Cesty jsou od kořene repozitáře; symbol je například `ReservationApiTests.test_delayed_approval_succeeds_after_24_hours_before_start`.
 
 Z kořene repozitáře:
 

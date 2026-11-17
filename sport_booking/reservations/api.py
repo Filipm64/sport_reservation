@@ -65,6 +65,7 @@ class ReservationEndpoint:
                 'unauthenticated': 401, 'forbidden': 403, 'not_found': 404,
                 'invalid_input': 400, 'invalid_interval': invalid_interval_status,
                 'conflict': 409, 'expired': 409, 'outside_hours': 409,
+                'cancellation_closed': 409,
             }[error.code]
             body = {'error': str(error)}
             if error.state is not None:
