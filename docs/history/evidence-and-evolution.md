@@ -1,5 +1,48 @@
 # Evidence and evolution
 
+## C10 — Provozní situace a logy
+
+Pokusy proběhly 21. 11. 2026 v časovém pásmu `Europe/Prague` nad
+[commitem `6dcf2bd`](https://github.com/Filipm64/sport_reservation/commit/6dcf2bd67f478b952a54cbb6bc5ff63ccbdefe5e).
+Použili jsme Django 6.1.1, Python 3.14.6, SQLite 3.53.2 a lokální `runserver --noreload`.
+Dočasná nastavení směrovala Django na novou souborovou SQLite v `/tmp`.
+Pro lokální start jsme vynechali vyhledávání názvu pro `127.0.0.1`.
+Po migraci jsme připravili testovací účet a jedno sportoviště bez schvalování.
+Požadavky šly přes HTTP s běžnou relací a CSRF. Stav rezervací jsme kontrolovali
+samostatným SQLite spojením pouze pro čtení. Termíny v tabulce jsou místní časy
+22. 11. 2026.
+
+| Situace | Očekávaný a skutečný výsledek | Jak jsme ověřili stav | Co ukázaly logy |
+| --- | --- | --- | --- |
+| Úspěšné potvrzení | Očekávání: `201` a `CONFIRMED` pro 10:00–11:00. **PASS:** API vrátilo `201`, `CONFIRMED` a ID `1`. | Před pokusem prázdná tabulka. Po něm jediný řádek s ID `1`, odpovídajícím uživatelem, sportovištěm, stavem a intervalem. | Přístupový log zachytil `201`. Vlastní záznam o úspěchu pro tento pokus nepotřebujeme. |
+| Zamítnutá kolize | Očekávání: `409` a stejný stav DB pro překryv 10:30–11:30. **PASS:** `409`, `Reservation interval is already taken.` | Dotaz vrátil stejný potvrzený řádek `1`. Druhý řádek nevznikl. | Přístupový log zachytil `409`. Odpověď API vysvětlila důvod. Pro běžnou kolizi bez požadavku na audit stačí odpověď, další log by přidával šum. |
+| Technická porucha a obnova | Očekávání: `500` při nedostupné DB, po obnově žádný zápis z chybného požadavku a funkční další operace. **PASS:** Po přesunutí adresáře databáze vrátil pokus pro 12:00–13:00 `500`. Po vrácení adresáře vrátil nový požadavek pro 13:00–14:00 `201` a ID `2`. | Ihned po obnově a před novým zápisem dotaz potvrdil pouze původní řádek `1`. Po novém požadavku přibyl potvrzený řádek `2`. | Traceback ukázal chybu otevření SQLite při načítání přihlašovací relace, tedy před zápisem rezervace. Přístupový log doplnil čas, metodu, cestu a HTTP `500`. |
+| Restart aplikace | Očekávání: po restartu zůstanou obě potvrzení a půjde vytvořit další. **PASS:** Po zastavení přes `SIGINT` a startu se stejnou DB vrátil požadavek pro 14:00–15:00 `201` a ID `3`. | Po startu byly řádky `1` a `2` shodné s výsledkem před restartem. Po dalším požadavku přibyl potvrzený řádek `3`. | Django vypsalo čas a adresu nového startu. Ukončení doložil řídicí skript časem, PID a návratovým kódem `0`. Django samostatný záznam o ukončení nevydalo. |
+
+Výřez logu Django při poruše (traceback zkrácen):
+
+```text
+Internal Server Error: /api/reservations/
+… in _get_session_from_db
+… in get_new_connection
+django.db.utils.OperationalError: unable to open database file
+[21/Nov/2026 13:34:47] "POST /api/reservations/ HTTP/1.1" 500 224415
+```
+
+Záznam ukončení procesu a následující výpis Django při startu:
+
+```text
+2026-11-21T13:34:47+01:00 process stopped pid=45179 code=0
+November 21, 2026 - 13:34:47
+Starting WSGI development server at http://127.0.0.1:52994/
+```
+
+Pro diagnostiku má smysl zaznamenávat technické chyby a události životního
+cyklu procesu. Stávající logy stačily k určení času a místa poruchy, typu
+výjimky a výsledku HTTP, takže jsme další aplikační logování nepřidávali.
+Uložený stav při potvrzení, nepřítomnost zápisu po kolizi a poruše i zachování
+rezervací po restartu doložily samostatné dotazy do SQLite.
+
 ## C08 — baseline před navrženou změnou storno politiky
 
 Dne 8. 11. 2026 byla zachycena aplikační baseline
